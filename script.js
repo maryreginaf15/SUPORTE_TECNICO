@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const { user } = await DB.login(username, password);
             currentUser = user;
             await loadAllData();
+            if (typeof window.completeAppInit === 'function') window.completeAppInit();
         } catch (err) {
             document.getElementById('authLoginBtn').disabled = false;
             document.getElementById('authLoginBtn').textContent = 'Entrar';
@@ -72,10 +73,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Auto login from session
-    (function() {
-        const saved = DB.getCurrentUser();
-        if (saved) currentUser = saved;
-    })();
+    async function restoreSession() {
+        try {
+            const { data } = await DB.getCurrentUser();
+            if (data?.user) {
+                const profile = await DB.loadProfile(data.user.id);
+                if (profile) {
+                    currentUser = {
+                        id: data.user.id,
+                        email: data.user.email,
+                        name: profile.name || data.user.email?.split('@')[0],
+                        role: profile.role || 'tech',
+                        phone: profile.phone || '',
+                        avatar: profile.avatar_url || '',
+                        allowedCategories: profile.allowed_categories || [],
+                        allowedStatuses: profile.allowed_statuses || []
+                    };
+                }
+            }
+        } catch { }
+    }
 
     // ============= DATA LOADING =============
     async function seedDefaults() {
@@ -359,11 +376,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
             const v = link.dataset.view;
-            if (v) { e.preventDefault(); switchView(v); }
+            if (v) {
+                e.preventDefault();
+                try {
+                    switchView(v);
+                } catch (err) {
+                    console.error('Erro ao navegar para', v, err);
+                }
+            }
         });
     });
-
-    // ============= NAVIGATION =============
 
     // ============= NOTIFICATION DROPDOWN =============
     document.getElementById('notificationBtn')?.addEventListener('click', (e) => {
@@ -652,7 +674,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ============= SECURITY =============
-    document.getElementById('changePasswordBtn')?.addEventListener('click', () => {
+    document.getElementById('changePasswordBtn')?.addEventListener('click', async () => {
         const current = document.getElementById('currentPassword').value;
         const newPwd = document.getElementById('newPassword').value;
         const confirm = document.getElementById('confirmPassword').value;
@@ -1170,6 +1192,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ============= INIT =============
     async function init() {
+        await restoreSession();
         const ok = await loadAllData();
         if (!ok) return;
 
@@ -1185,13 +1208,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (currentUser?.role === 'client') switchView('my-tickets');
     }
 
-    await init();
+    // Shared function to complete init after login
+    window.completeAppInit = function() {
+        applyAppearance();
+        loadProfileUI();
+        loadNotifUI();
+        updateCategoryFilter();
+        updateFormCategories();
+        renderTickets();
+        updateNotifications();
+        renderReports();
+
+        if (currentUser?.role === 'client') switchView('my-tickets');
+    };
+
+    init();
 
     // ============= CLOSE OUTSIDE =============
     document.addEventListener('click', (e) => {
         const dd = document.getElementById('notificationDropdown');
         const nBtn = document.getElementById('notificationBtn');
-        if (dd && nBtn && !nBtn.contains(e.target) && !dd.contains(e.target)) dd.style.display = 'none';
+        if (dd && nBtn && !nBtn.contains(e.target) && !dd.contains(e.target)) {
+            if (dd.style.display === 'block') dd.style.display = 'none';
+        }
         if (modal && e.target === modal) modal.style.display = 'none';
         if (sidebar?.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle) sidebar.classList.remove('open');
     });
