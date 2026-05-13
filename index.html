@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">TechSupport Pro - Enterprise Console</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon" id="logoIcon">
+                    <span class="material-symbols-outlined" id="logoIconSpan">support_agent</span>
+                    <img id="logoIconImg" style="display:none;width:100%;height:100%;object-fit:contain;">
+                </div>
+                <div class="logo-text">
+                    <h1 id="logoTitle">TechSupport Pro</h1>
+                    <p id="logoSubtitle">Enterprise Console</p>
+                </div>
+            </div>
+
+            <button class="btn-new-ticket" data-view="new-ticket">
+                <span class="material-symbols-outlined">add</span>
+                <span>Novo Chamado</span>
+            </button>
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-link active" data-view="dashboard">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Painel</span>
+                </a>
+                <a href="#" class="nav-link" data-view="my-tickets">
+                    <span class="material-symbols-outlined">confirmation_number</span>
+                    <span>Meus Chamados</span>
+                </a>
+                <a href="#" class="nav-link" data-view="reports">
+                    <span class="material-symbols-outlined">assessment</span>
+                    <span>Relatórios</span>
+                </a>
+                <a href="#" class="nav-link" data-view="settings">
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Configuração</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button class="menu-toggle" id="menuToggle">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <h2 class="page-title">Dashboard de Suporte</h2>
+                </div>
+
+                <div class="header-actions">
+                    <div class="search-bar">
+                        <span class="material-symbols-outlined">search</span>
+                        <input type="text" placeholder="Buscar chamados..." id="searchInput">
+                    </div>
+                    
+                    <div class="header-icons" style="display: flex; gap: 4px; position: relative;">
+                        <button class="icon-btn" id="notificationBtn">
+                            <span class="material-symbols-outlined">notifications</span>
+                            <span class="notif-badge" id="notifBadge" style="display:none; position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; background: var(--error); border-radius: 50%; border: 2px solid white; font-size: 10px; color: white; align-items: center; justify-content: center; font-weight: 700;"></span>
+                        </button>
+                        <div class="notification-dropdown" id="notificationDropdown">
+                            <div class="notif-header">Notificações</div>
+                            <div id="notifList"></div>
+                            <div class="notif-footer" id="notifClearAll">Limpar todas</div>
+                        </div>
+                        <button class="icon-btn">
+                            <span class="material-symbols-outlined">help_outline</span>
+                        </button>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <button class="user-profile" data-view="settings">
+                        <div class="avatar">
+                            <img id="headerAvatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTOuwC6CmKVwCvMdVSF4N5lNfQEJatHCBro4wE8tjchVW3Fj5n8DEy3L1RN69D774ORacfmykwneuRJEkydtKTv6hjh-6TqfKrKQUoZDlBpbgMm9txD1qEuxAqt8KpS7LvwC8K4pHksq6juYT-ke_S2tnCA9EBkKpwf_nnyHCWmPUvuTdN-ZOOpJkXICk_oWniaDvMoJIRoKjINoVktMCc4BLc2tKTJrJXWfkn4MguMp1uWQbtBpDDuZUFv8MmrYpM253WdoMP1G7-" alt="User Avatar">
+                        </div>
+                        <span style="font-size: 12px; font-weight: 600; color: var(--on-surface-variant);">Configurações</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="view-section" id="view-dashboard">
+                <!-- Stat Cards -->
+                <section class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-label">Chamados Abertos</span>
+                            <span class="material-symbols-outlined" style="color: #16a34a;">error_circle_rounded</span>
+                        </div>
+                        <div class="stat-value">42</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-label">Em Atendimento</span>
+                            <span class="material-symbols-outlined" style="color: #eab308;">engineering</span>
+                        </div>
+                        <div class="stat-value">18</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-label">Aguardando Peças</span>
+                            <span class="material-symbols-outlined" style="color: #f97316;">inventory_2</span>
+                        </div>
+                        <div class="stat-value">7</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-label">Concluídos Hoje</span>
+                            <span class="material-symbols-outlined" style="color: var(--primary);">check_circle</span>
+                        </div>
+                        <div class="stat-value">24</div>
+                    </div>
+                </section>
+
+                <!-- Filters -->
+                <div class="filters-bar" id="filtersBar">
+                    <button class="filter-chip active" data-filter="all">Todos</button>
+                    <button class="filter-chip" data-filter="ti">Informática/TI</button>
+                    <button class="filter-chip" data-filter="electrical">Elétrica</button>
+                    <button class="filter-chip" data-filter="building">Predial/Civil</button>
+                    <button class="filter-chip" data-filter="security">Segurança Eletrônica</button>
+                    <button class="filter-chip" data-filter="telecom">Telecomunicações</button>
+                </div>
+
+                <!-- Tickets Table -->
+                <div class="data-container">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID/Ticket</th>
+                                    <th>Assunto</th>
+                                    <th>Categoria</th>
+                                    <th>Prioridade</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">
+                                        <div class="table-header-actions">
+                                            <span>Ações</span>
+                                            <a href="#" class="link-all">
+                                                Ver todos <span class="material-symbols-outlined" style="font-size: 14px;">arrow_forward</span>
+                                            </a>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="ticketsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New Ticket View -->
+            <div class="view-section" id="view-new-ticket" style="display: none; padding: var(--space-lg);">
+                <div class="form-container" style="max-width: 600px; background: white; padding: var(--space-xl); border-radius: var(--radius-lg); border: 1px solid var(--outline-variant);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-lg);">
+                        <h3 style="font-size: 20px;">Criar Novo Chamado</h3>
+                        <span class="form-user-indicator" style="font-size:11px;color:var(--on-surface-variant);background:var(--surface-container);padding:4px 10px;border-radius:var(--radius-full);font-weight:600;"></span>
+                    </div>
+                    <form id="newTicketForm">
+                        <div class="form-group" style="margin-bottom: var(--space-md);">
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Assunto</label>
+                            <input type="text" id="ticketSubject" placeholder="Descreva brevemente o problema" required style="width: 100%; padding: var(--space-sm); border: 1px solid var(--outline-variant); border-radius: var(--radius-default); outline: none;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: var(--space-md); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Categoria</label>
+                                <select id="formCategory" required style="width: 100%; padding: var(--space-sm); border: 1px solid var(--outline-variant); border-radius: var(--radius-default); background: white;">
+                                    <option value="ti">Informática/TI</option>
+                                    <option value="electrical">Elétrica</option>
+                                    <option value="building">Predial/Civil</option>
+                                    <option value="security">Segurança Eletrônica</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Prioridade</label>
+                                <select id="formPriority" required style="width: 100%; padding: var(--space-sm); border: 1px solid var(--outline-variant); border-radius: var(--radius-default); background: white;">
+                                    <option value="low">Baixa</option>
+                                    <option value="medium">Média</option>
+                                    <option value="high">Alta</option>
+                                    <option value="critical">Crítica</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: var(--space-md);">
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Anexar Arquivo/Chamado</label>
+                            <div style="border: 2px dashed var(--outline-variant); padding: var(--space-md); border-radius: var(--radius-default); text-align: center; cursor: pointer;" onclick="document.getElementById('fileInput').click()">
+                                <span class="material-symbols-outlined" style="font-size: 32px; color: var(--on-surface-variant);">upload_file</span>
+                                <p style="font-size: 12px; color: var(--on-surface-variant);">Clique para selecionar ou arraste arquivos aqui</p>
+                                <input type="file" id="fileInput" style="display: none;">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: var(--space-lg);">
+                            <label style="display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;">Descrição Detalhada</label>
+                            <textarea id="ticketDescription" rows="4" placeholder="Forneça mais detalhes sobre o chamado..." style="width: 100%; padding: var(--space-sm); border: 1px solid var(--outline-variant); border-radius: var(--radius-default); outline: none; font-family: inherit;"></textarea>
+                        </div>
+                        <div style="display: flex; gap: var(--space-sm); justify-content: flex-end;">
+                            <button type="button" class="btn-cancel" style="padding: var(--space-sm) var(--space-lg); border-radius: var(--radius-default); border: 1px solid var(--outline-variant); font-weight: 600;">Cancelar</button>
+                            <button type="submit" style="padding: var(--space-sm) var(--space-lg); border-radius: var(--radius-default); background: var(--primary); color: white; font-weight: 600;">Abrir Chamado</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div class="view-section" id="view-settings" style="display: none; padding: var(--space-lg);">
+                <div class="settings-layout">
+                    <!-- Settings Sidebar -->
+                    <div class="settings-sidebar">
+                        <button class="nav-link active" data-settings-tab="profile">Perfil</button>
+                        <button class="nav-link" data-settings-tab="notifications">Notificações</button>
+                        <button class="nav-link" data-settings-tab="appearance">Aparência</button>
+                        <button class="nav-link" data-settings-tab="security">Segurança</button>
+                        <button class="nav-link" data-settings-tab="management">Gerenciamento</button>
+                    </div>
+
+                    <!-- Settings Content -->
+                    <div id="settings-content">
+                        <!-- Profile Tab -->
+                        <div class="settings-pane" id="pane-profile" style="display: block;">
+                            <h3 class="settings-title">Configurações de Perfil</h3>
+                            <div class="settings-card">
+                                <div class="profile-header-form">
+                                    <div class="profile-avatar-edit">
+                                        <img id="profileAvatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTOuwC6CmKVwCvMdVSF4N5lNfQEJatHCBro4wE8tjchVW3Fj5n8DEy3L1RN69D774ORacfmykwneuRJEkydtKTv6hjh-6TqfKrKQUoZDlBpbgMm9txD1qEuxAqt8KpS7LvwC8K4pHksq6juYT-ke_S2tnCA9EBkKpwf_nnyHCWmPUvuTdN-ZOOpJkXICk_oWniaDvMoJIRoKjINoVktMCc4BLc2tKTJrJXWfkn4MguMp1uWQbtBpDDuZUFv8MmrYpM253WdoMP1G7-" alt="Avatar">
+                                        <label class="avatar-upload-label">
+                                            <span class="material-symbols-outlined">photo_camera</span>
+                                            <input type="file" id="avatarUpload" accept="image/*">
+                                        </label>
+                                    </div>
+                                    <div class="profile-fields">
+                                        <div class="form-group">
+                                            <label>Nome Completo</label>
+                                            <input type="text" id="profileName" placeholder="Seu nome">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Cargo</label>
+                                            <input type="text" id="profileRole" placeholder="Seu cargo">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>E-mail</label>
+                                            <input type="email" id="profileEmail" placeholder="seu@email.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Telefone</label>
+                                            <input type="text" id="profilePhone" placeholder="(11) 99999-9999">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="settings-actions">
+                                    <button class="btn-primary" id="saveProfileBtn">Salvar Perfil</button>
+                                    <span id="profileSaveFeedback" class="save-feedback"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notifications Tab -->
+                        <div class="settings-pane" id="pane-notifications" style="display: none;">
+                            <h3 class="settings-title">Preferências de Notificações</h3>
+                            <div class="settings-card">
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">Novo chamado atribuído</div>
+                                        <div class="setting-desc">Notificar quando um chamado for atribuído a você</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" class="notif-toggle" data-key="notifNewTicket" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">Mudança de status</div>
+                                        <div class="setting-desc">Notificar quando o status de um chamado for alterado</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" class="notif-toggle" data-key="notifStatusChange" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">SLA próximo do vencimento</div>
+                                        <div class="setting-desc">Alertar quando o SLA estiver perto de expirar</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" class="notif-toggle" data-key="notifSla" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">Comentários em chamados</div>
+                                        <div class="setting-desc">Notificar quando houver novos comentários</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" class="notif-toggle" data-key="notifComments" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">Relatórios semanais</div>
+                                        <div class="setting-desc">Receber resumo semanal por e-mail</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" class="notif-toggle" data-key="notifReports">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="settings-actions">
+                                    <span id="notifSaveFeedback" class="save-feedback"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Appearance Tab -->
+                        <div class="settings-pane" id="pane-appearance" style="display: none;">
+                            <h3 class="settings-title">Personalização de Aparência</h3>
+                            <div class="settings-card">
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">Modo Escuro</div>
+                                        <div class="setting-desc">Alternar entre os temas claro e escuro.</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="darkModeToggle">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">Modo Compacto</div>
+                                        <div class="setting-desc">Reduzir espaçamentos para exibir mais informações</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="compactModeToggle">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">Fonte Mono em IDs</div>
+                                        <div class="setting-desc">Usar fonte monoespaçada para códigos e IDs</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="monoFontToggle" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Security Tab -->
+                        <div class="settings-pane" id="pane-security" style="display: none;">
+                            <h3 class="settings-title">Segurança</h3>
+                            <div class="settings-card">
+                                <h4 class="card-subtitle">Alterar Senha</h4>
+                                <div class="form-group">
+                                    <label>Senha Atual</label>
+                                    <input type="password" id="currentPassword" placeholder="Digite sua senha atual">
+                                </div>
+                                <div class="form-group">
+                                    <label>Nova Senha</label>
+                                    <input type="password" id="newPassword" placeholder="Digite a nova senha">
+                                </div>
+                                <div class="form-group">
+                                    <label>Confirmar Nova Senha</label>
+                                    <input type="password" id="confirmPassword" placeholder="Confirme a nova senha">
+                                </div>
+                                <div class="settings-actions">
+                                    <button class="btn-primary" id="changePasswordBtn">Alterar Senha</button>
+                                    <span id="passwordFeedback" class="save-feedback"></span>
+                                </div>
+                            </div>
+                            <div class="settings-card">
+                                <h4 class="card-subtitle">Autenticação em Dois Fatores (2FA)</h4>
+                                <div class="setting-row">
+                                    <div>
+                                        <div class="setting-label">Autenticação em Dois Fatores</div>
+                                        <div class="setting-desc">Adicionar uma camada extra de segurança à sua conta</div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="twoFactorToggle">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="settings-card">
+                                <h4 class="card-subtitle">Sessões Ativas</h4>
+                                <div id="sessionsList">
+                                    <div class="session-item">
+                                        <div>
+                                            <span class="material-symbols-outlined">devices</span>
+                                            <div>
+                                                <div class="setting-label">Windows - Chrome</div>
+                                                <div class="setting-desc">Ativo agora • IP: 192.168.1.100</div>
+                                            </div>
+                                        </div>
+                                        <span class="session-badge">Atual</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Management Tab -->
+                        <div class="settings-pane" id="pane-management" style="display: none;">
+                            <h3 class="settings-title">Gerenciamento do Sistema</h3>
+
+                            <!-- Admin Tabs inside Management -->
+                            <div class="admin-tabs">
+                                <button class="admin-tab active" data-admin-tab="users">Usuários</button>
+                                <button class="admin-tab" data-admin-tab="categories">Categorias</button>
+                                <button class="admin-tab" data-admin-tab="statuses">Status</button>
+                                <button class="admin-tab" data-admin-tab="system">Sistema</button>
+                            </div>
+
+                            <!-- Users Panel -->
+                            <div class="admin-panel" id="admin-users" style="display: block;">
+                                <div class="settings-card">
+                                    <div class="card-header-with-actions">
+                                        <h4 class="card-subtitle">Usuários do Sistema</h4>
+                                        <span class="badge-count" id="userCount">0</span>
+                                    </div>
+                                    <div class="user-form" style="display:flex;flex-wrap:wrap;gap:8px;">
+                                        <input type="text" id="newUserUsername" placeholder="Usuário (login)" class="input-field" style="min-width:120px;flex:1;">
+                                        <input type="text" id="newUserName" placeholder="Nome completo" class="input-field" style="min-width:140px;flex:1;">
+                                        <input type="email" id="newUserEmail" placeholder="E-mail" class="input-field" style="min-width:160px;flex:1;">
+                                        <select id="newUserRole" class="input-field" style="max-width:150px;">
+                                            <option value="admin">Administrador</option>
+                                            <option value="tech">Técnico</option>
+                                            <option value="client">Cliente</option>
+                                        </select>
+                                        <button id="addUserBtn" class="btn-add" style="white-space:nowrap;">Adicionar</button>
+                                    </div>
+                                    <div id="userTableContainer">
+                                        <table class="user-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nome</th>
+                                                    <th>E-mail</th>
+                                                    <th>Cargo</th>
+                                                    <th style="text-align:right;">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="userTableBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Categories Panel -->
+                            <div class="admin-panel" id="admin-categories" style="display: none;">
+                                <div class="settings-card">
+                                    <div class="card-header-with-actions">
+                                        <h4 class="card-subtitle">Categorias</h4>
+                                        <span class="badge-count" id="categoryCount">0</span>
+                                    </div>
+                                    <div class="input-group">
+                                        <input type="text" id="newCategoryInput" placeholder="Nova categoria..." class="input-field">
+                                        <button id="addCategoryBtn" class="btn-add">Adicionar</button>
+                                    </div>
+                                    <ul id="categoryList" class="item-list"></ul>
+                                </div>
+                            </div>
+
+                            <!-- Status Panel -->
+                            <div class="admin-panel" id="admin-statuses" style="display: none;">
+                                <div class="settings-card">
+                                    <div class="card-header-with-actions">
+                                        <h4 class="card-subtitle">Status</h4>
+                                        <span class="badge-count" id="statusCount">0</span>
+                                    </div>
+                                    <div class="input-group">
+                                        <input type="text" id="newStatusInput" placeholder="Novo status..." class="input-field">
+                                        <button id="addStatusBtn" class="btn-add">Adicionar</button>
+                                    </div>
+                                    <ul id="statusList" class="item-list"></ul>
+                                </div>
+                            </div>
+
+                            <!-- System Config Panel -->
+                            <div class="admin-panel" id="admin-system" style="display: none;">
+                                <div class="settings-card">
+                                    <h4 class="card-subtitle">Personalizar Sistema</h4>
+                                    <div class="form-group">
+                                        <label>Nome do Sistema</label>
+                                        <input type="text" id="sysTitle" placeholder="TechSupport Pro" class="input-field">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Subtítulo</label>
+                                        <input type="text" id="sysSubtitle" placeholder="Enterprise Console" class="input-field">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Logo (opcional)</label>
+                                        <div style="display:flex;gap:var(--space-md);align-items:center;">
+                                            <div style="width:64px;height:64px;border:2px dashed var(--outline-variant);border-radius:var(--radius-default);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;" id="sysLogoPreview">
+                                                <span class="material-symbols-outlined" style="color:var(--on-surface-variant);">image</span>
+                                                <img id="sysLogoPreviewImg" style="display:none;width:100%;height:100%;object-fit:contain;">
+                                            </div>
+                                            <div style="flex:1;">
+                                                <button id="sysLogoUploadBtn" class="btn-add" style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:16px;">upload</span> Upload</button>
+                                                <input type="file" id="sysLogoInput" accept="image/*" style="display:none;">
+                                                <p style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;">Formatos: PNG, JPG, SVG. Máx: 200x200px</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="settings-actions">
+                                        <button id="saveSystemConfigBtn" class="btn-primary">Salvar Configuração</button>
+                                        <span id="sysConfigFeedback" class="save-feedback"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-actions" style="margin-top: 24px;">
+                                <button id="btnExportPDF" class="btn-export">
+                                    <span class="material-symbols-outlined">picture_as_pdf</span> Exportar Relatório do Sistema
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Meus Chamados View -->
+            <div class="view-section" id="view-my-tickets" style="display: none; padding: var(--space-lg);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
+                    <h2 style="font-size: 24px;">Meus Chamados</h2>
+                    <div style="display: flex; gap: var(--space-sm);">
+                        <button class="filter-chip my-tickets-filter active" data-myfilter="all">Todos</button>
+                        <button class="filter-chip my-tickets-filter" data-myfilter="open">Abertos</button>
+                        <button class="filter-chip my-tickets-filter" data-myfilter="in-progress">Em Atendimento</button>
+                        <button class="filter-chip my-tickets-filter" data-myfilter="resolved">Resolvidos</button>
+                    </div>
+                </div>
+                
+                <div class="data-container">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID/Ticket</th>
+                                    <th>Assunto</th>
+                                    <th>Categoria</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="myTicketsBody">
+                                <!-- Dinamicamente preenchido -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Relatórios View -->
+            <div class="view-section" id="view-reports" style="display: none; padding: var(--space-lg);">
+                <h2 style="margin-bottom: var(--space-lg);">Relatórios Gerenciais</h2>
+                
+                <div style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); display: grid; gap: var(--space-lg);">
+                    <div style="background: white; padding: var(--space-lg); border-radius: var(--radius-lg); border: 1px solid var(--outline-variant);">
+                        <h4 style="margin-bottom: var(--space-md);">Desempenho por Categoria</h4>
+                        <div id="reportCategoryChart" style="height: 220px; display: flex; align-items: flex-end; gap: var(--space-md); padding: 10px 10px 0;">
+                        </div>
+                        <div id="reportCategoryLabels" style="display: flex; justify-content: space-around; font-size: 11px; font-weight: 600; margin-top: 4px; padding: 0 10px;">
+                        </div>
+                    </div>
+
+                    <div style="background: white; padding: var(--space-lg); border-radius: var(--radius-lg); border: 1px solid var(--outline-variant);">
+                        <h4 style="margin-bottom: var(--space-md);">Status dos Chamados</h4>
+                        <div id="reportStatusBars" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="ticketModal">
+        <div class="modal-content">
+            <button style="position: absolute; top: 12px; right: 12px; font-size: 24px;" onclick="document.getElementById('ticketModal').style.display='none'">&times;</button>
+            <h3 id="modalTicketId" style="margin-bottom: 8px;">#TK-XXXX</h3>
+            <h2 id="modalTicketSubject" style="margin-bottom: 16px;">Assunto do Chamado</h2>
+            <div id="modalDetails" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px;">
+                <div><strong>Categoria:</strong> <span id="modalCat">TI</span></div>
+                <div><strong>Prioridade:</strong> <span id="modalPriority">Média</span></div>
+                <div><strong>Status:</strong> <span id="modalStatus">Aberto</span></div>
+                <div><strong>Criado em:</strong> <span id="modalCreatedAt">-</span></div>
+                <div><strong>Fechado em:</strong> <span id="modalClosedAt">-</span></div>
+            </div>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--outline-variant);">
+            <p id="modalDescription" style="font-size: 14px; line-height: 1.6;">Descrição detalhada aqui...</p>
+            <div id="modalAdminSection" style="display:none; margin-top: 16px; padding: 16px; background: var(--surface-container); border-radius: var(--radius-default);">
+                <h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Alterar Status (Admin)</h4>
+                <div style="display:flex;gap:8px;">
+                    <select id="modalStatusSelect" style="flex:1;padding:var(--space-sm);border:1px solid var(--outline-variant);border-radius:var(--radius-default);background:white;"></select>
+                    <button id="modalSaveStatusBtn" style="padding:var(--space-sm) var(--space-lg);background:var(--primary);color:white;border-radius:var(--radius-default);font-weight:600;">Salvar</button>
+                </div>
+                <span id="modalStatusFeedback" style="font-size:11px;font-weight:600;margin-top:4px;display:none;"></span>
+            </div>
+            <div style="margin-top: 24px; display: flex; gap: 12px;">
+                <button id="modalEditBtn" style="display:none; flex:1; background: var(--primary); color: white; padding: 10px; border-radius: 4px; font-weight: 600;">Editar Chamado</button>
+                <button style="flex: 1; border: 1px solid var(--outline-variant); padding: 10px; border-radius: 4px; font-weight: 600;" onclick="document.getElementById('ticketModal').style.display='none'">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Overlay -->
+    <div class="modal-overlay" id="authOverlay" style="z-index: 2000;background:var(--surface);">
+        <div class="login-container">
+            <div class="login-logo">
+                <div class="logo-icon" style="width:48px;height:48px;border-radius:12px;">
+                    <span class="material-symbols-outlined" style="font-size:28px;">support_agent</span>
+                </div>
+                <h1 id="loginTitle" style="font-size:22px;font-weight:700;margin-top:12px;">TechSupport Pro</h1>
+                <p id="loginSubtitle" style="font-size:13px;color:var(--on-surface-variant);">Enterprise Console</p>
+            </div>
+            <div class="login-form">
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label>Usuário</label>
+                    <input type="text" id="authUsername" placeholder="Nome de usuário" class="login-input" autocomplete="off">
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label>Senha</label>
+                    <input type="password" id="authPassword" placeholder="Sua senha" class="login-input">
+                </div>
+                <div id="authError" style="color:var(--error);font-size:12px;font-weight:600;margin-bottom:var(--space-sm);display:none;"></div>
+                <button id="authLoginBtn" class="login-btn">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Config Modal -->
+    <div class="modal-overlay" id="userConfigModal">
+        <div class="modal-content" style="max-width: 550px;">
+            <button style="position:absolute;top:12px;right:12px;font-size:24px;color:var(--on-surface-variant);" onclick="document.getElementById('userConfigModal').style.display='none'">&times;</button>
+            <h3 style="margin-bottom: var(--space-md);">Configurar Permissões</h3>
+            <p style="font-size:14px;margin-bottom:var(--space-lg);color:var(--on-surface-variant);">
+                Definir categorias e status que <strong id="configUserName">Usuário</strong> pode acessar.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg);">
+                <div>
+                    <h4 style="font-size:13px;font-weight:600;margin-bottom:var(--space-sm);">Categorias Permitidas</h4>
+                    <div id="configCategoriesList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                </div>
+                <div>
+                    <h4 style="font-size:13px;font-weight:600;margin-bottom:var(--space-sm);">Status Permitidos</h4>
+                    <div id="configStatusesList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                </div>
+            </div>
+            <div style="margin-top:var(--space-lg);display:flex;gap:var(--space-sm);justify-content:flex-end;">
+                <button id="cancelUserConfigBtn" style="padding:var(--space-sm) var(--space-lg);border:1px solid var(--outline-variant);border-radius:var(--radius-default);font-weight:600;">Cancelar</button>
+                <button id="saveUserConfigBtn" class="btn-primary">Salvar Permissões</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
