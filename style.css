@@ -155,8 +155,10 @@ a {
 .logo-container {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-sm);
     margin-bottom: var(--space-xl);
+    padding-top: var(--space-lg);
 }
 
 .logo-icon {
