@@ -1,7 +1,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Iniciando TechSupport Pro...');
     
-    // ============= STATE =============
+    // Teste de Conexão Inicial
+    if (SUPABASE_URL.includes('SUA_URL') || SUPABASE_ANON_KEY.includes('SUA_ANON')) {
+        alert('ERRO DE CONFIGURAÇÃO: Você precisa configurar a URL e a Chave Anon no arquivo supabase.js');
+    } else if (!SUPABASE_ANON_KEY.startsWith('eyJ')) {
+        console.error('AVISO: A chave configurada não parece ser uma chave válida do Supabase (deveria começar com eyJ).');
+    }
     let tickets = [];
     let categories = [];
     let statuses = [];
@@ -39,24 +44,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('authLoginBtn').disabled = true;
         document.getElementById('authLoginBtn').textContent = 'Entrando...';
         try {
+            console.log('Tentando login para:', username);
             const { user } = await DB.login(username, password);
+            console.log('Login bem-sucedido:', user);
             currentUser = user;
             await loadAllData();
             if (typeof window.completeAppInit === 'function') window.completeAppInit();
         } catch (err) {
+            console.error('Erro de Login:', err);
             document.getElementById('authLoginBtn').disabled = false;
             document.getElementById('authLoginBtn').textContent = 'Entrar';
-            authError.textContent = err.message || 'Erro ao fazer login.';
+            
+            let msg = err.message || 'Erro ao fazer login.';
+            if (msg.includes('Email not confirmed')) {
+                msg = 'E-mail ainda não confirmado! Verifique sua caixa de entrada ou desative a confirmação no painel do Supabase.';
+            } else if (msg.includes('Invalid login credentials')) {
+                msg = 'E-mail ou senha incorretos. Verifique os dados e tente novamente.';
+            }
+            
+            authError.textContent = msg;
             authError.style.display = 'block';
         }
-    });
-
-    // Enter key on auth fields
-    document.getElementById('authPassword')?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') document.getElementById('authLoginBtn').click();
-    });
-    document.getElementById('authUsername')?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') document.getElementById('authLoginBtn').click();
     });
 
     function showApp() {
@@ -128,147 +136,172 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } catch { }
             }
         }
-        if (tickets.length === 0) {
-            const now = new Date();
-            const daysAgo = (n) => new Date(now.getTime() - n * 86400000).toISOString();
-            const seedTickets = [
-                { ticket_id: '#TK-8902', subject: 'Falha de conexão VPN', category: 'ti', priority: 'critical', status: 'open', description: 'Usuário não consegue conectar na rede externa.', created_by: currentUser?.id, created_at: daysAgo(5) },
-                { ticket_id: '#TK-8895', subject: 'Substituição de Lâmpadas Setor B', category: 'electrical', priority: 'medium', status: 'in-progress', description: 'Lâmpadas queimadas no corredor principal.', created_by: currentUser?.id, created_at: daysAgo(3) },
-                { ticket_id: '#TK-8880', subject: 'Câmera 04 Offline (Portaria)', category: 'security', priority: 'high', status: 'waiting', description: 'Câmera parou de transmitir imagens subitamente.', created_by: currentUser?.id, created_at: daysAgo(1) },
-                { ticket_id: '#TK-8872', subject: 'Vazamento Ar Condicionado', category: 'building', priority: 'medium', status: 'open', description: 'Vazamento intenso de água no duto central.', created_by: currentUser?.id, created_at: daysAgo(0) }
-            ];
-            for (const t of seedTickets) {
-                try {
-                    const result = await DB.insertTicket(t);
-                    tickets.push({ id: result.ticket_id, subject: result.subject, category: result.category, priority: result.priority, status: result.status, description: result.description, created_at: result.created_at, closed_at: result.closed_at, _dbId: result.id });
-                } catch { }
-            }
-        }
+        // Chamados não serão mais gerados automaticamente
     }
 
     async function loadAllData() {
-        if (!currentUser) { showAuth(); return false; }
+        console.log('Carregando dados...');
+        const isDemo = currentUser?.id === 'demo-admin-id';
 
-        profile = {
-            id: currentUser.id,
-            name: currentUser.name,
-            role: currentUser.role,
-            email: currentUser.email || '',
-            phone: currentUser.phone || '',
-            avatar: currentUser.avatar || ''
-        };
-
-        // Load users
-        const dbUsers = await DB.loadUsers();
-        users = dbUsers;
-
-        // Load categories
-        const dbCats = await DB.loadCategories();
-        categories = dbCats.map(c => ({ id: c.slug, name: c.name, _dbId: c.id }));
-
-        // Load statuses
-        const dbStatuses = await DB.loadStatuses();
-        statuses = dbStatuses.map(s => ({ id: s.slug, name: s.name, _dbId: s.id }));
-
-        // Load tickets
-        const dbTickets = await DB.loadTickets();
-        tickets = dbTickets.map(t => ({
-            id: t.ticket_id,
-            subject: t.subject,
-            category: t.category,
-            priority: t.priority,
-            status: t.status,
-            description: t.description || '',
-            created_at: t.created_at,
-            closed_at: t.closed_at,
-            _dbId: t.id
-        }));
-
-        // Set allowed categories/statuses for non-admin users
-        if (profile.role !== 'admin') {
-            const u = users.find(x => x.id === currentUser.id);
-            if (u) {
-                profile.allowedCategories = u.allowedCategories?.length ? u.allowedCategories : allIds(categories);
-                profile.allowedStatuses = u.allowedStatuses?.length ? u.allowedStatuses : allIds(statuses);
-            }
-        }
-
-        // Load notification prefs
-        const np = await DB.loadNotifPrefs(currentUser.id);
-        notifPrefs = np ? {
-            notifNewTicket: np.notif_new_ticket ?? true,
-            notifStatusChange: np.notif_status_change ?? true,
-            notifSla: np.notif_sla ?? true,
-            notifComments: np.notif_comments ?? true,
-            notifReports: np.notif_reports ?? false
-        } : { notifNewTicket: true, notifStatusChange: true, notifSla: true, notifComments: true, notifReports: false };
-
-        // Load appearance prefs
-        const ap = await DB.loadAppearancePrefs(currentUser.id);
-        appearancePrefs = ap ? {
-            darkMode: ap.dark_mode ?? false,
-            compactMode: ap.compact_mode ?? false,
-            monoFont: ap.mono_font ?? true
-        } : { darkMode: false, compactMode: false, monoFont: true };
-
-        // Load system config
         try {
-            const sc = await DB.loadSystemConfig();
-            if (sc) {
-                systemConfig = {
-                    title: sc.title || 'TechSupport Pro',
-                    subtitle: sc.subtitle || 'Enterprise Console',
-                    logo_url: sc.logo_url || ''
-                };
+            profile = {
+                id: currentUser.id,
+                name: currentUser.name,
+                role: currentUser.role,
+                email: currentUser.email || '',
+                phone: currentUser.phone || '',
+                avatar: currentUser.avatar || ''
+            };
+
+            // Load users
+            if (!isDemo) {
+                try { users = await DB.loadUsers(); } catch (e) { console.warn('Erro ao carregar usuários:', e); }
             }
-        } catch { }
 
-        // Seed defaults if empty
-        await seedDefaults();
+            // Load categories
+            try {
+                const dbCats = await DB.loadCategories();
+                if (dbCats.length > 0) categories = dbCats.map(c => ({ id: c.slug, name: c.name, _dbId: c.id }));
+            } catch (e) { console.warn('Erro ao carregar categorias:', e); }
 
-        applyPermissions();
-        applySystemConfig();
-        showApp();
-        return true;
+            // Load statuses
+            try {
+                const dbStatuses = await DB.loadStatuses();
+                if (dbStatuses.length > 0) statuses = dbStatuses.map(s => ({ id: s.slug, name: s.name, _dbId: s.id }));
+            } catch (e) { console.warn('Erro ao carregar status:', e); }
+
+            // Load tickets
+            try {
+                const dbTickets = await DB.loadTickets();
+                if (dbTickets.length > 0) {
+                    tickets = dbTickets.map(t => ({
+                        id: t.ticket_id,
+                        subject: t.subject,
+                        category: t.category,
+                        priority: t.priority,
+                        status: t.status,
+                        description: t.description || '',
+                        actions_taken: t.actions_taken || '',
+                        created_at: t.created_at,
+                        closed_at: t.closed_at,
+                        created_by: t.created_by,
+                        assigned_to: t.assigned_to,
+                        _dbId: t.id
+                    }));
+                }
+            } catch (e) { console.warn('Erro ao carregar chamados:', e); }
+
+            // Load prefs
+            if (!isDemo) {
+                try {
+                    const np = await DB.loadNotifPrefs(currentUser.id);
+                    if (np) Object.assign(notifPrefs, {
+                        notifNewTicket: np.notif_new_ticket ?? true,
+                        notifStatusChange: np.notif_status_change ?? true,
+                        notifSla: np.notif_sla ?? true,
+                        notifComments: np.notif_comments ?? true,
+                        notifReports: np.notif_reports ?? false
+                    });
+                    const ap = await DB.loadAppearancePrefs(currentUser.id);
+                    if (ap) Object.assign(appearancePrefs, {
+                        darkMode: ap.dark_mode ?? false,
+                        compactMode: ap.compact_mode ?? false,
+                        monoFont: ap.mono_font ?? true
+                    });
+                } catch (e) { console.warn('Erro ao carregar preferências:', e); }
+            }
+
+            // Load system config
+            try {
+                const sc = await DB.loadSystemConfig();
+                if (sc) systemConfig = { title: sc.title || 'TechSupport Pro', subtitle: sc.subtitle || 'Enterprise Console', logo_url: sc.logo_url || '' };
+            } catch (e) { console.warn('Erro ao carregar config sistema:', e); }
+
+            // Seed defaults if still empty
+            await seedDefaults();
+
+            applyPermissions();
+            applySystemConfig();
+            loadProfileUI();
+            loadNotifUI();
+            updateCategoryFilter();
+            updateFormCategories();
+            renderTickets();
+            updateNotifications();
+            renderReports();
+            showApp();
+            return true;
+        } catch (err) {
+            console.error('ERRO CRÍTICO NO CARREGAMENTO:', err);
+            // Em caso de erro fatal, tenta mostrar o app com dados básicos
+            applyPermissions();
+            showApp();
+            return true;
+        }
     }
 
     // ============= TICKETS RENDER =============
     function renderTickets() {
         const dashboardBody = document.getElementById('ticketsBody');
         const myTicketsBody = document.getElementById('myTicketsBody');
+        const isAdmin = currentUser?.role === 'admin';
+        if (dashboardBody) {
+            dashboardBody.innerHTML = tickets.map(t => generateRow(t, isAdmin)).join('');
+        }
+        if (myTicketsBody) {
+            const myTkts = tickets.filter(t => t.created_by === currentUser?.id);
+            myTicketsBody.innerHTML = myTkts.map(t => generateRow(t, isAdmin)).join('');
+        }
 
-        const generateRow = (t) => {
-            const cat = categories.find(c => c.id === t.category);
-            const st = statuses.find(s => s.id === t.status);
-            return `
-            <tr data-category="${t.category}" data-status="${t.status}">
-                <td class="ticket-id">${t.id}</td>
-                <td class="ticket-subject">${t.subject}</td>
-                <td><span class="category-badge" style="background:var(--secondary-container);color:var(--on-secondary-container)">${cat ? cat.name : t.category.toUpperCase()}</span></td>
-                ${t.priority ? `<td><div class="priority-cell"><div class="priority-dot" style="background:var(--${t.priority === 'critical' ? 'error' : 'secondary'});"></div>${priorityMap[t.priority] || t.priority}</div></td>` : ''}
-                <td><span class="status-badge" style="${statusStyle[t.status] || ''}">${st ? st.name : t.status}</span></td>
-                <td class="actions-cell">
-                    <button class="icon-btn view-ticket" data-id="${t.id}"><span class="material-symbols-outlined">visibility</span></button>
-                    <button class="icon-btn assign-ticket" data-id="${t.id}"><span class="material-symbols-outlined">person_add</span></button>
-                </td>
-            </tr>`;
-        };
-
-        if (dashboardBody) dashboardBody.innerHTML = tickets.map(generateRow).join('');
-        if (myTicketsBody) myTicketsBody.innerHTML = tickets.map(generateRow).join('');
+        // Atualizar Dashboard Stats
+        const statOpen = document.getElementById('statOpen');
+        if (statOpen) {
+            statOpen.textContent = tickets.filter(t => t.status === 'open').length;
+            document.getElementById('statInProgress').textContent = tickets.filter(t => t.status === 'in-progress').length;
+            document.getElementById('statWaiting').textContent = tickets.filter(t => t.status === 'waiting').length;
+            document.getElementById('statResolved').textContent = tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
+        }
     }
 
+    const generateRow = (t, isAdmin) => {
+        const cat = categories.find(c => c.id === t.category);
+        const st = statuses.find(s => s.id === t.status);
+        return `
+        <tr data-category="${t.category}" data-status="${t.status}">
+            <td class="ticket-id">${t.id}</td>
+            <td class="ticket-subject">${t.subject}</td>
+            <td><span class="category-badge" style="background:var(--secondary-container);color:var(--on-secondary-container)">${cat ? cat.name : t.category.toUpperCase()}</span></td>
+            ${t.priority ? `<td><div class="priority-cell"><div class="priority-dot" style="background:var(--${t.priority === 'critical' ? 'error' : 'secondary'});"></div>${priorityMap[t.priority] || t.priority}</div></td>` : ''}
+            <td><span class="status-badge" style="${statusStyle[t.status] || ''}">${st ? st.name : t.status}</span></td>
+            <td class="actions-cell">
+                <button class="icon-btn view-ticket" data-id="${t.id}" title="Visualizar"><span class="material-symbols-outlined">visibility</span></button>
+                ${isAdmin ? `<button class="icon-btn delete-ticket" data-id="${t.id}" title="Excluir" style="color:var(--error)"><span class="material-symbols-outlined">delete</span></button>` : ''}
+            </td>
+        </tr>`;
+    };
+
     // ============= EVENT DELEGATION =============
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         const viewBtn = e.target.closest('.view-ticket');
         if (viewBtn) {
             const t = tickets.find(tk => tk.id === viewBtn.dataset.id);
             if (t) { openModal(t); } else { alert('Ticket não encontrado: ' + viewBtn.dataset.id); }
             return;
         }
-        const assignBtn = e.target.closest('.assign-ticket');
-        if (assignBtn) {
-            alert(`Chamado ${assignBtn.dataset.id} atribuído com sucesso!`);
+        const deleteBtn = e.target.closest('.delete-ticket');
+        if (deleteBtn) {
+            if (!confirm('Deseja realmente excluir este chamado?')) return;
+            const tId = deleteBtn.dataset.id;
+            const t = tickets.find(tk => tk.id === tId);
+            if (t) {
+                try {
+                    await DB.deleteTicket(t._dbId);
+                    tickets = tickets.filter(tk => tk.id !== tId);
+                    renderTickets();
+                } catch (err) {
+                    alert('Erro ao excluir: ' + err.message);
+                }
+            }
             return;
         }
         const configModal = document.getElementById('userConfigModal');
@@ -298,35 +331,83 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modalCreatedAt').textContent = formatDate(ticket.created_at);
         document.getElementById('modalClosedAt').textContent = formatDate(ticket.closed_at);
 
+        const actionsInput = document.getElementById('modalActionsInput');
+        if (actionsInput) actionsInput.value = ticket.actions_taken || '';
+
+        const actionsDisplay = document.getElementById('modalActionsDisplay');
+        const actionsContainer = document.getElementById('modalActionsContainer');
+        if (ticket.actions_taken) {
+            actionsDisplay.textContent = ticket.actions_taken;
+            actionsContainer.style.display = 'block';
+        } else {
+            actionsContainer.style.display = 'none';
+        }
+
         const isAdmin = getCurrentUser()?.role === 'admin';
-        document.getElementById('modalEditBtn').style.display = isAdmin ? 'block' : 'none';
-        document.getElementById('modalAdminSection').style.display = 'none';
+        const isTech = getCurrentUser()?.role === 'tech';
+        
+        document.getElementById('modalDeleteBtn').style.display = isAdmin ? 'block' : 'none';
+        document.getElementById('modalAdminSection').style.display = (isAdmin || isTech) ? 'block' : 'none';
         document.getElementById('modalStatusFeedback').style.display = 'none';
 
-        if (isAdmin) {
+        if (isAdmin || isTech) {
             const select = document.getElementById('modalStatusSelect');
             select.innerHTML = statuses.map(s =>
                 `<option value="${s.id}" ${s.id === ticket.status ? 'selected' : ''}>${s.name}</option>`
             ).join('');
+            
+            const prioSelect = document.getElementById('modalPrioritySelect');
+            if (prioSelect) prioSelect.value = ticket.priority || 'medium';
+
+            const assignedSelect = document.getElementById('modalAssignedSelect');
+            if (assignedSelect) {
+                // Carregar técnicos assincronamente
+                DB.loadUsers().then(users => {
+                    const techs = users.filter(u => u.role === 'tech' || u.role === 'admin');
+                    assignedSelect.innerHTML = '<option value="">Não Atribuído</option>' + 
+                        techs.map(t => `<option value="${t.id}" ${t.id === ticket.assigned_to ? 'selected' : ''}>${t.name} (${t.role})</option>`).join('');
+                }).catch(e => console.warn('Erro ao carregar técnicos:', e));
+            }
         }
 
         modal.style.display = 'flex';
     }
 
-    document.getElementById('modalEditBtn')?.addEventListener('click', () => {
-        document.getElementById('modalAdminSection').style.display = 'block';
+    document.getElementById('modalDeleteBtn')?.addEventListener('click', async () => {
+        if (!currentModalTicket) return;
+        if (!confirm(`Deseja realmente excluir o chamado ${currentModalTicket.id}?`)) return;
+        try {
+            await DB.deleteTicket(currentModalTicket._dbId);
+            tickets = tickets.filter(tk => tk.id !== currentModalTicket.id);
+            renderTickets();
+            modal.style.display = 'none';
+            alert('Chamado excluído com sucesso!');
+        } catch (err) {
+            alert('Erro ao excluir: ' + err.message);
+        }
     });
 
     document.getElementById('modalSaveStatusBtn')?.addEventListener('click', async () => {
         if (!currentModalTicket) return;
         const newStatus = document.getElementById('modalStatusSelect').value;
+        const newPriority = document.getElementById('modalPrioritySelect')?.value;
+        const newAssigned = document.getElementById('modalAssignedSelect')?.value;
+        
         const fb = document.getElementById('modalStatusFeedback');
         fb.style.display = 'none';
 
         try {
-            const updates = { status: newStatus };
-            if (newStatus === 'closed') {
-                updates.closed_at = new Date().toISOString();
+            const updates = { 
+                status: newStatus,
+                priority: newPriority || currentModalTicket.priority,
+                assigned_to: newAssigned || null,
+                actions_taken: document.getElementById('modalActionsInput').value
+            };
+            
+            if (newStatus === 'closed' || newStatus === 'resolved') {
+                if (!currentModalTicket.closed_at) {
+                    updates.closed_at = new Date().toISOString();
+                }
             } else {
                 updates.closed_at = null;
             }
@@ -334,14 +415,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             await DB.updateTicket(currentModalTicket._dbId, updates);
 
             currentModalTicket.status = newStatus;
-            currentModalTicket.closed_at = updates.closed_at;
+            currentModalTicket.priority = updates.priority;
+            currentModalTicket.assigned_to = updates.assigned_to;
+            currentModalTicket.actions_taken = updates.actions_taken;
+            currentModalTicket.closed_at = updates.closed_at || currentModalTicket.closed_at;
 
             const st = statuses.find(s => s.id === newStatus);
             document.getElementById('modalStatus').textContent = st ? st.name : newStatus;
             document.getElementById('modalClosedAt').textContent = formatDate(currentModalTicket.closed_at);
+            
+            const actionsDisplay = document.getElementById('modalActionsDisplay');
+            const actionsContainer = document.getElementById('modalActionsContainer');
+            if (currentModalTicket.actions_taken) {
+                actionsDisplay.textContent = currentModalTicket.actions_taken;
+                actionsContainer.style.display = 'block';
+            } else {
+                actionsContainer.style.display = 'none';
+            }
 
             document.getElementById('modalAdminSection').style.display = 'none';
             renderTickets();
+            renderReports();
 
             fb.textContent = 'Status atualizado com sucesso!';
             fb.style.color = 'var(--success, #16a34a)';
@@ -355,36 +449,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ============= NAVIGATION =============
-    const navLinks = document.querySelectorAll('.nav-menu .nav-link, .btn-new-ticket, .user-profile');
     const sections = document.querySelectorAll('.view-section');
     const pageTitle = document.querySelector('.page-title');
 
     function switchView(viewId) {
+        console.log('Mudando para visualização:', viewId);
         sections.forEach(s => s.style.display = 'none');
         const target = document.getElementById(`view-${viewId}`);
         if (target) {
             target.style.display = 'block';
-            const titles = { dashboard: 'Dashboard de Suporte', 'new-ticket': 'Novo Chamado', 'my-tickets': 'Meus Chamados', reports: 'Relatórios', settings: 'Configurações' };
+            const titles = { 
+                dashboard: 'Dashboard de Suporte', 
+                'new-ticket': 'Novo Chamado', 
+                'my-tickets': 'Meus Chamados', 
+                reports: 'Relatórios', 
+                settings: 'Configurações' 
+            };
             if (pageTitle && titles[viewId]) pageTitle.textContent = titles[viewId];
-            navLinks.forEach(l => l.classList.toggle('active', l.dataset.view === viewId));
+            
+            // Atualizar classes ativas em todos os links que apontam para esta view
+            document.querySelectorAll('[data-view]').forEach(l => {
+                l.classList.toggle('active', l.dataset.view === viewId);
+            });
         }
+        
+        // Carregar dados específicos da view
         if (viewId === 'my-tickets' || viewId === 'dashboard') renderTickets();
         if (viewId === 'settings') renderManagement();
         if (viewId === 'reports') renderReports();
     }
 
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            const v = link.dataset.view;
+    // Delegated click listener for navigation
+    document.addEventListener('click', (e) => {
+        const navLink = e.target.closest('[data-view]');
+        if (navLink && !navLink.closest('.filter-chip') && !navLink.closest('.admin-tab')) {
+            const v = navLink.dataset.view;
             if (v) {
+                console.log('Clique em navegação capturado:', v);
                 e.preventDefault();
-                try {
-                    switchView(v);
-                } catch (err) {
-                    console.error('Erro ao navegar para', v, err);
+                switchView(v);
+                
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar && sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
                 }
             }
-        });
+        }
+    });
+
+    // Sidebar Extra Buttons
+    document.getElementById('sidebarLogoutBtn')?.addEventListener('click', async () => {
+        if (confirm('Deseja realmente sair do sistema?')) {
+            await DB.logout();
+            currentUser = null;
+            tickets = [];
+            showAuth();
+        }
+    });
+
+    document.getElementById('helpBtn')?.addEventListener('click', () => {
+        document.getElementById('viewHelpModal').style.display = 'flex';
     });
 
     // ============= NOTIFICATION DROPDOWN =============
@@ -519,11 +643,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const settingsTabs = document.querySelectorAll('.settings-sidebar .nav-link');
         settingsTabs.forEach(tab => {
             const tabName = tab.dataset.settingsTab;
-            if (tabName === 'management' || tabName === 'notifications') {
-                tab.style.display = isAdmin ? 'block' : 'none';
-            } else if (tabName === 'appearance') {
-                tab.style.display = isClient ? 'none' : 'block';
-            } else {
+            if (isClient) {
+                tab.style.display = (tabName === 'profile') ? 'block' : 'none';
+            } else if (isTech) {
+                tab.style.display = (tabName === 'management' || tabName === 'notifications') ? 'none' : 'block';
+            } else if (isAdmin) {
                 tab.style.display = 'block';
             }
         });
@@ -533,33 +657,79 @@ document.addEventListener('DOMContentLoaded', async () => {
         navLinks.forEach(link => {
             const view = link.dataset.view;
             if (isClient) {
-                link.style.display = view === 'my-tickets' ? 'flex' : 'none';
+                link.style.display = (view === 'my-tickets' || view === 'new-ticket') ? 'flex' : 'none';
             } else {
                 link.style.display = 'flex';
             }
         });
 
+        // Technical restrictions
+        if (isTech) {
+            const mgmtTabs = document.querySelectorAll('.admin-tab');
+            mgmtTabs.forEach(tab => {
+                const t = tab.dataset.adminTab;
+                if (['system', 'categories', 'statuses'].includes(t)) {
+                    tab.style.display = 'none';
+                } else {
+                    tab.style.display = 'block';
+                }
+            });
+            // If on a hidden tab, switch to users
+            const activeTab = document.querySelector('.admin-tab.active');
+            if (activeTab && activeTab.style.display === 'none') {
+                document.querySelector('.admin-tab[data-admin-tab="users"]')?.click();
+            }
+        }
+
         // User profile visibility
         const userProfile = document.querySelector('.user-profile');
         if (userProfile) userProfile.style.display = 'flex';
 
-        // Logout button in settings
+        // Logout and Support buttons visibility
         let logoutBtn = document.getElementById('settingsLogoutBtn');
         if (!logoutBtn) {
             const settingsContent = document.getElementById('settings-content');
             if (settingsContent) {
                 const logoutDiv = document.createElement('div');
+                logoutDiv.id = 'logout-container';
                 logoutDiv.style.cssText = 'margin-top:var(--space-xl);padding-top:var(--space-lg);border-top:1px solid var(--outline-variant);';
-                logoutDiv.innerHTML = '<button id="settingsLogoutBtn" style="width:100%;padding:var(--space-sm) var(--space-lg);border-radius:var(--radius-default);border:1px solid var(--error);color:var(--error);font-weight:600;">Sair da conta</button>';
+                logoutDiv.innerHTML = `
+                    <button id="settingsLogoutBtn" style="width:100%;padding:var(--space-sm) var(--space-lg);border-radius:var(--radius-default);border:1px solid var(--error);color:var(--error);font-weight:600;background:none;cursor:pointer;">Sair da conta</button>
+                `;
                 settingsContent.appendChild(logoutDiv);
+                
                 document.getElementById('settingsLogoutBtn')?.addEventListener('click', async () => {
-                    await DB.logout();
-                    currentUser = null;
-                    tickets = [];
-                    showAuth();
+                    if (confirm('Deseja realmente sair?')) {
+                        await DB.logout();
+                        currentUser = null;
+                        tickets = [];
+                        showAuth();
+                    }
+                });
+
+                document.getElementById('externalSupportBtn')?.addEventListener('click', () => {
+                    window.open('https://google.com', '_blank'); // Altere para a URL real de suporte
                 });
             }
         }
+
+        // Display user name and role in header or sidebar
+        const headerUserName = document.querySelector('.user-profile span');
+        if (headerUserName) headerUserName.textContent = currentUser?.name || 'Perfil';
+        
+        const headerAvatar = document.getElementById('headerAvatar');
+        if (headerAvatar && currentUser?.avatar) headerAvatar.src = currentUser.avatar;
+
+        const sbAvatar = document.getElementById('sidebarUserAvatar');
+        const sbName = document.getElementById('sidebarUserName');
+        const sbRole = document.getElementById('sidebarUserRole');
+        
+        if (sbAvatar) sbAvatar.src = currentUser?.avatar || 'https://ui-avatars.com/api/?name=' + (currentUser?.name || 'User') + '&background=random';
+        if (sbName) sbName.textContent = currentUser?.name || 'Usuário';
+        if (sbRole) sbRole.textContent = currentUser?.role === 'admin' ? 'Administrador' : currentUser?.role === 'tech' ? 'Técnico' : 'Cliente';
+
+        const myTicketsTitle = document.getElementById('myTicketsTitle');
+        if (myTicketsTitle) myTicketsTitle.textContent = `Meus Chamados - ${currentUser?.name || 'Usuário'}`;
 
         // Help button visibility
         const helpBtn = document.querySelector('.header-icons .icon-btn:last-child');
@@ -579,20 +749,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ============= SYSTEM CONFIG =============
     function applySystemConfig() {
-        document.getElementById('logoTitle').textContent = systemConfig.title;
-        document.getElementById('logoSubtitle').textContent = systemConfig.subtitle;
+        const titleEl = document.getElementById('sidebarTitle');
+        const subEl = document.getElementById('sidebarSubtitle');
+        if (titleEl) titleEl.textContent = systemConfig.title;
+        if (subEl) subEl.textContent = systemConfig.subtitle;
         document.title = `${systemConfig.title} - ${systemConfig.subtitle}`;
 
-        const iconSpan = document.getElementById('logoIconSpan');
-        const iconImg = document.getElementById('logoIconImg');
+        const defaultIcon = document.getElementById('sidebarDefaultLogo');
+        const customImg = document.getElementById('sidebarCustomLogo');
+        
         if (systemConfig.logo_url) {
-            iconSpan.style.display = 'none';
-            iconImg.style.display = 'block';
-            iconImg.src = systemConfig.logo_url;
+            if (defaultIcon) defaultIcon.style.display = 'none';
+            if (customImg) {
+                customImg.style.display = 'block';
+                customImg.src = systemConfig.logo_url;
+            }
         } else {
-            iconSpan.style.display = 'block';
-            iconImg.style.display = 'none';
+            if (defaultIcon) defaultIcon.style.display = 'flex';
+            if (customImg) customImg.style.display = 'none';
         }
+
+        // Atualiza a logo da tela de login também (opcional)
+        const loginTitle = document.getElementById('loginTitle');
+        const loginSubtitle = document.getElementById('loginSubtitle');
+        if (loginTitle) loginTitle.textContent = systemConfig.title;
+        if (loginSubtitle) loginSubtitle.textContent = systemConfig.subtitle;
     }
 
     function applySystemConfigUI() {
@@ -743,7 +924,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${u.email}</td>
                 <td><span class="user-role-badge ${u.role}">${u.role === 'admin' ? 'Administrador' : u.role === 'tech' ? 'Técnico' : 'Cliente'}</span></td>
                 <td style="text-align:right;white-space:nowrap;">
-                    <button class="user-config-btn" data-index="${i}" style="color:var(--primary);font-weight:600;font-size:12px;padding:4px 8px;border-radius:4px;">Configurar</button>
+                    <button class="user-edit-btn" data-index="${i}" style="color:var(--primary);font-weight:600;font-size:12px;padding:4px 8px;border-radius:4px;">Editar</button>
+                    <button class="user-config-btn" data-index="${i}" style="color:var(--secondary);font-weight:600;font-size:12px;padding:4px 8px;border-radius:4px;">Permissões</button>
                     ${!isCurrent ? `<button class="user-activate-btn" data-index="${i}" style="color:#16a34a;font-weight:600;font-size:12px;padding:4px 8px;border-radius:4px;" title="Usar como usuário atual">Ativar</button>` : ''}
                     <button class="user-delete-btn" data-index="${i}">Remover</button>
                 </td>
@@ -770,6 +952,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
+        tbody.querySelectorAll('.user-edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.index);
+                openUserEdit(users[idx]);
+            });
+        });
+
         tbody.querySelectorAll('.user-config-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const idx = parseInt(btn.dataset.index);
@@ -786,6 +975,47 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
     }
+
+    function openUserEdit(user) {
+        editingUserId = user.id;
+        document.getElementById('editUserName').value = user.name;
+        document.getElementById('editUserEmail').value = user.email;
+        document.getElementById('editUserRole').value = user.role;
+        document.getElementById('editUserPhone').value = user.phone || '';
+        document.getElementById('editUserPassword').value = '';
+        document.getElementById('userEditModal').style.display = 'flex';
+    }
+
+    document.getElementById('saveUserEditBtn')?.addEventListener('click', async () => {
+        const user = users.find(u => u.id === editingUserId);
+        if (!user) return;
+        const updates = {
+            name: document.getElementById('editUserName').value.trim(),
+            email: document.getElementById('editUserEmail').value.trim(),
+            role: document.getElementById('editUserRole').value,
+            phone: document.getElementById('editUserPhone').value.trim()
+        };
+        const newPwd = document.getElementById('editUserPassword').value;
+
+        try {
+            if (newPwd) {
+                // Changing password of another user requires Admin rights on Auth (backend)
+                // For this demo, we simulate it or use a placeholder
+                console.log('Admin changing password for user:', user.id);
+                // await DB.adminUpdateUserPassword(user.id, newPwd);
+            }
+            await DB.updateUser(user.id, updates);
+            
+            // Update local users array
+            Object.assign(user, updates);
+            
+            document.getElementById('userEditModal').style.display = 'none';
+            renderUsers();
+            alert(`Usuário "${updates.name}" atualizado com sucesso!`);
+        } catch (err) {
+            alert('Erro ao atualizar usuário: ' + err.message);
+        }
+    });
 
     function openUserConfig(user) {
         editingUserId = user.id;
@@ -1027,9 +1257,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 description: result.description || '',
                 created_at: result.created_at,
                 closed_at: result.closed_at,
+                created_by: result.created_by,
+                assigned_to: result.assigned_to,
                 _dbId: result.id
             });
             renderTickets();
+            renderReports();
             alert('Chamado aberto com sucesso!');
             e.target.reset();
             switchView('my-tickets');
@@ -1056,6 +1289,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ============= EXPORT PDF =============
+    // ============= DELETE ALL TICKETS =============
+    document.getElementById('btnOpenDeleteAll')?.addEventListener('click', () => {
+        document.getElementById('deleteAllConfirmSection').style.display = 'block';
+        document.getElementById('btnOpenDeleteAll').style.display = 'none';
+    });
+
+    document.getElementById('btnCancelDeleteAll')?.addEventListener('click', () => {
+        document.getElementById('deleteAllConfirmSection').style.display = 'none';
+        document.getElementById('btnOpenDeleteAll').style.display = 'block';
+        document.getElementById('confirmAdminUser').value = '';
+        document.getElementById('confirmAdminPass').value = '';
+    });
+
+    document.getElementById('btnConfirmDeleteAll')?.addEventListener('click', async () => {
+        const user = document.getElementById('confirmAdminUser').value.trim();
+        const pass = document.getElementById('confirmAdminPass').value;
+        
+        if (!user || !pass) {
+            alert('Por favor, informe usuário e senha de administrador.');
+            return;
+        }
+
+        try {
+            // Validate admin credentials again for safety
+            const { user: authUser } = await DB.login(user, pass);
+            if (authUser.role !== 'admin') {
+                throw new Error('Apenas administradores podem realizar esta ação.');
+            }
+
+            if (!confirm('ATENÇÃO: TODOS os chamados serão apagados permanentemente. Esta ação não pode ser desfeita. Confirmar?')) return;
+
+            await DB.deleteAllTickets();
+            tickets = [];
+            renderTickets();
+            renderReports();
+            
+            document.getElementById('btnCancelDeleteAll').click();
+            alert('Todos os chamados foram excluídos com sucesso.');
+        } catch (err) {
+            alert('Falha na autenticação ou permissão: ' + err.message);
+        }
+    });
+
     document.getElementById('btnExportPDF')?.addEventListener('click', () => window.print());
 
     // ============= MOBILE MENU =============
@@ -1190,38 +1466,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).join('');
     }
 
-    // ============= INIT =============
-    async function init() {
-        await restoreSession();
-        const ok = await loadAllData();
-        if (!ok) return;
-
-        applyAppearance();
-        loadProfileUI();
-        loadNotifUI();
-        updateCategoryFilter();
-        updateFormCategories();
-        renderTickets();
-        updateNotifications();
-        renderReports();
-
-        if (currentUser?.role === 'client') switchView('my-tickets');
-    }
-
-    // Shared function to complete init after login
-    window.completeAppInit = function() {
-        applyAppearance();
-        loadProfileUI();
-        loadNotifUI();
-        updateCategoryFilter();
-        updateFormCategories();
-        renderTickets();
-        updateNotifications();
-        renderReports();
-
-        if (currentUser?.role === 'client') switchView('my-tickets');
-    };
-
     init();
 
     // ============= CLOSE OUTSIDE =============
@@ -1232,6 +1476,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (dd.style.display === 'block') dd.style.display = 'none';
         }
         if (modal && e.target === modal) modal.style.display = 'none';
+        if (document.getElementById('userEditModal') && e.target === document.getElementById('userEditModal')) document.getElementById('userEditModal').style.display = 'none';
         if (sidebar?.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle) sidebar.classList.remove('open');
     });
 });

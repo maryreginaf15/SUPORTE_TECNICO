@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="pageTitle">TechSupport Pro - Enterprise Console</title>
+    <title id="pageTitle">TechSupport Pro - MR</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +24,7 @@
                 </div>
                 <div class="logo-text">
                     <h1 id="logoTitle">TechSupport Pro</h1>
-                    <p id="logoSubtitle">Enterprise Console</p>
+                    <p id="logoSubtitle">MR</p>
                 </div>
             </div>
 
@@ -51,15 +51,29 @@
                     <span>Configuração</span>
                 </a>
             </nav>
+
+            <div class="sidebar-footer" style="margin-top: auto; padding: var(--space-md); border-top: 1px solid var(--outline-variant); display: flex; flex-direction: column; gap: 12px;">
+                
+                <!-- Dados do Usuário na Sidebar -->
+                <div style="display: flex; align-items: center; gap: 12px; padding: 8px; background: var(--surface-container); border-radius: var(--radius-default);">
+                    <img id="sidebarUserAvatar" src="" alt="Avatar" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid white; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; flex-direction: column; overflow: hidden;">
+                        <span id="sidebarUserRole" style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase;">ADMIN</span>
+                        <span id="sidebarUserName" style="font-size: 13px; font-weight: 600; color: var(--on-surface); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">Nome do Usuário</span>
+                    </div>
+                </div>
+
+                <button class="nav-link" id="sidebarLogoutBtn" style="width: 100%; justify-content: flex-start; background: none; border: none; color: var(--error); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-default);">
+                    <span class="material-symbols-outlined">logout</span>
+                    <span>Sair do Sistema</span>
+                </button>
+            </div>
         </aside>
 
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <button class="menu-toggle" id="menuToggle">
-                        <span class="material-symbols-outlined">menu</span>
-                    </button>
                     <h2 class="page-title">Dashboard de Suporte</h2>
                 </div>
 
@@ -79,7 +93,7 @@
                             <div id="notifList"></div>
                             <div class="notif-footer" id="notifClearAll">Limpar todas</div>
                         </div>
-                        <button class="icon-btn">
+                        <button class="icon-btn" id="helpBtn" title="Ajuda">
                             <span class="material-symbols-outlined">help_outline</span>
                         </button>
                     </div>
@@ -103,28 +117,28 @@
                             <span class="stat-label">Chamados Abertos</span>
                             <span class="material-symbols-outlined" style="color: #16a34a;">error_circle_rounded</span>
                         </div>
-                        <div class="stat-value">42</div>
+                        <div class="stat-value" id="statOpen">0</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
                             <span class="stat-label">Em Atendimento</span>
                             <span class="material-symbols-outlined" style="color: #eab308;">engineering</span>
                         </div>
-                        <div class="stat-value">18</div>
+                        <div class="stat-value" id="statInProgress">0</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
                             <span class="stat-label">Aguardando Peças</span>
                             <span class="material-symbols-outlined" style="color: #f97316;">inventory_2</span>
                         </div>
-                        <div class="stat-value">7</div>
+                        <div class="stat-value" id="statWaiting">0</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-card-header">
                             <span class="stat-label">Concluídos Hoje</span>
                             <span class="material-symbols-outlined" style="color: var(--primary);">check_circle</span>
                         </div>
-                        <div class="stat-value">24</div>
+                        <div class="stat-value" id="statResolved">0</div>
                     </div>
                 </section>
 
@@ -427,6 +441,7 @@
                                 <button class="admin-tab active" data-admin-tab="users">Usuários</button>
                                 <button class="admin-tab" data-admin-tab="categories">Categorias</button>
                                 <button class="admin-tab" data-admin-tab="statuses">Status</button>
+                                <button class="admin-tab" data-admin-tab="tickets-admin">Chamados</button>
                                 <button class="admin-tab" data-admin-tab="system">Sistema</button>
                             </div>
 
@@ -494,6 +509,30 @@
                                 </div>
                             </div>
 
+                            <!-- Tickets Admin Panel -->
+                            <div class="admin-panel" id="admin-tickets-admin" style="display: none;">
+                                <div class="settings-card">
+                                    <h4 class="card-subtitle" style="color: var(--error);">Zona de Perigo</h4>
+                                    <p style="font-size: 13px; margin-bottom: 16px; color: var(--on-surface-variant);">
+                                        Esta ação removerá <strong>todos os chamados</strong> do sistema permanentemente.
+                                    </p>
+                                    <div id="deleteAllConfirmSection" style="display:none; padding: 16px; background: var(--error-container); border-radius: var(--radius-default); margin-bottom: 16px;">
+                                        <p style="font-size: 12px; font-weight: 700; color: var(--on-error-container); margin-bottom: 12px;">Confirme suas credenciais para prosseguir:</p>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                            <input type="text" id="confirmAdminUser" placeholder="Usuário admin" class="input-field" style="background:white; border-color: var(--error);">
+                                            <input type="password" id="confirmAdminPass" placeholder="Senha admin" class="input-field" style="background:white; border-color: var(--error);">
+                                        </div>
+                                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                            <button id="btnConfirmDeleteAll" class="btn-export" style="background: var(--error); flex: 1; justify-content: center;">Confirmar Exclusão Total</button>
+                                            <button id="btnCancelDeleteAll" class="btn-primary" style="background: var(--outline); flex: 1;">Cancelar</button>
+                                        </div>
+                                    </div>
+                                    <button id="btnOpenDeleteAll" class="btn-export" style="width: 100%; justify-content: center;">
+                                        <span class="material-symbols-outlined">delete_forever</span> Excluir Todos os Chamados
+                                    </button>
+                                </div>
+                            </div>
+
                             <!-- System Config Panel -->
                             <div class="admin-panel" id="admin-system" style="display: none;">
                                 <div class="settings-card">
@@ -540,7 +579,7 @@
             <!-- Meus Chamados View -->
             <div class="view-section" id="view-my-tickets" style="display: none; padding: var(--space-lg);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
-                    <h2 style="font-size: 24px;">Meus Chamados</h2>
+                    <h2 style="font-size: 24px;" id="myTicketsTitle">Meus Chamados</h2>
                     <div style="display: flex; gap: var(--space-sm);">
                         <button class="filter-chip my-tickets-filter active" data-myfilter="all">Todos</button>
                         <button class="filter-chip my-tickets-filter" data-myfilter="open">Abertos</button>
@@ -603,18 +642,51 @@
                 <div><strong>Criado em:</strong> <span id="modalCreatedAt">-</span></div>
                 <div><strong>Fechado em:</strong> <span id="modalClosedAt">-</span></div>
             </div>
+            <div style="margin-top: 16px; font-size: 14px; display: none;" id="modalActionsContainer">
+                <strong>Ações Tomadas:</strong>
+                <p id="modalActionsDisplay" style="margin-top: 4px; padding: 8px; background: var(--surface-container); border-radius: 4px; font-style: italic;"></p>
+            </div>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--outline-variant);">
             <p id="modalDescription" style="font-size: 14px; line-height: 1.6;">Descrição detalhada aqui...</p>
-            <div id="modalAdminSection" style="display:none; margin-top: 16px; padding: 16px; background: var(--surface-container); border-radius: var(--radius-default);">
-                <h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Alterar Status (Admin)</h4>
-                <div style="display:flex;gap:8px;">
-                    <select id="modalStatusSelect" style="flex:1;padding:var(--space-sm);border:1px solid var(--outline-variant);border-radius:var(--radius-default);background:white;"></select>
-                    <button id="modalSaveStatusBtn" style="padding:var(--space-sm) var(--space-lg);background:var(--primary);color:white;border-radius:var(--radius-default);font-weight:600;">Salvar</button>
+            <div id="modalAdminSection" style="margin-top: 16px; padding: 16px; background: var(--surface-container); border-radius: var(--radius-default);">
+                <h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Editar Detalhes do Chamado</h4>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--on-surface-variant);">Status:</label>
+                        <select id="modalStatusSelect" style="width:100%;padding:var(--space-sm);border:1px solid var(--outline-variant);border-radius:var(--radius-default);background:white;"></select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--on-surface-variant);">Prioridade:</label>
+                        <select id="modalPrioritySelect" style="width:100%;padding:var(--space-sm);border:1px solid var(--outline-variant);border-radius:var(--radius-default);background:white;">
+                            <option value="low">Baixa</option>
+                            <option value="medium">Média</option>
+                            <option value="high">Alta</option>
+                            <option value="critical">Crítica</option>
+                        </select>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--on-surface-variant);">Atribuído para:</label>
+                        <select id="modalAssignedSelect" style="width:100%;padding:var(--space-sm);border:1px solid var(--outline-variant);border-radius:var(--radius-default);background:white;">
+                            <option value="">Não Atribuído</option>
+                            <!-- Técnicos listados aqui -->
+                        </select>
+                    </div>
                 </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--on-surface-variant);">Ações Realizadas:</label>
+                    <textarea id="modalActionsInput" rows="3" placeholder="Descreva as ações tomadas para resolver este chamado..." style="width: 100%; padding: var(--space-sm); border: 1px solid var(--outline-variant); border-radius: var(--radius-default); outline: none; font-family: inherit; font-size: 13px; resize: vertical;"></textarea>
+                </div>
+                
+                <div style="display:flex; justify-content: flex-end;">
+                    <button id="modalSaveStatusBtn" style="padding:var(--space-sm) var(--space-lg);background:var(--primary);color:white;border-radius:var(--radius-default);font-weight:600;">Salvar Alterações</button>
+                </div>
+
                 <span id="modalStatusFeedback" style="font-size:11px;font-weight:600;margin-top:4px;display:none;"></span>
             </div>
             <div style="margin-top: 24px; display: flex; gap: 12px;">
-                <button id="modalEditBtn" style="display:none; flex:1; background: var(--primary); color: white; padding: 10px; border-radius: 4px; font-weight: 600;">Editar Chamado</button>
+                <button id="modalDeleteBtn" style="display:none; flex:1; background: var(--error); color: white; padding: 10px; border-radius: 4px; font-weight: 600;">Excluir</button>
                 <button style="flex: 1; border: 1px solid var(--outline-variant); padding: 10px; border-radius: 4px; font-weight: 600;" onclick="document.getElementById('ticketModal').style.display='none'">Fechar</button>
             </div>
         </div>
@@ -628,12 +700,12 @@
                     <span class="material-symbols-outlined" style="font-size:28px;">support_agent</span>
                 </div>
                 <h1 id="loginTitle" style="font-size:22px;font-weight:700;margin-top:12px;">TechSupport Pro</h1>
-                <p id="loginSubtitle" style="font-size:13px;color:var(--on-surface-variant);">Enterprise Console</p>
+                <p id="loginSubtitle" style="font-size:13px;color:var(--on-surface-variant);">MR</p>
             </div>
             <div class="login-form">
                 <div class="form-group" style="margin-bottom:var(--space-md);">
-                    <label>Usuário</label>
-                    <input type="text" id="authUsername" placeholder="Nome de usuário" class="login-input" autocomplete="off">
+                    <label>E-mail</label>
+                    <input type="email" id="authUsername" placeholder="seu@email.com" class="login-input" autocomplete="on">
                 </div>
                 <div class="form-group" style="margin-bottom:var(--space-md);">
                     <label>Senha</label>
@@ -670,7 +742,62 @@
         </div>
     </div>
 
-    <script src="supabase.js?v=3"></script>
-    <script src="script.js?v=2"></script>
+    <!-- User Edit Modal (Admin) -->
+    <div class="modal-overlay" id="userEditModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <button style="position:absolute;top:12px;right:12px;font-size:24px;color:var(--on-surface-variant);" onclick="document.getElementById('userEditModal').style.display='none'">&times;</button>
+            <h3 style="margin-bottom: var(--space-md);">Editar Usuário</h3>
+            <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" id="editUserName" class="input-field">
+            </div>
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="editUserEmail" class="input-field">
+            </div>
+            <div class="form-group">
+                <label>Cargo/Tipo</label>
+                <select id="editUserRole" class="input-field">
+                    <option value="admin">Administrador</option>
+                    <option value="tech">Técnico</option>
+                    <option value="client">Cliente</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" id="editUserPhone" class="input-field">
+            </div>
+            <div class="form-group">
+                <label>Nova Senha (deixe em branco para não alterar)</label>
+                <input type="password" id="editUserPassword" class="input-field" placeholder="Digite a nova senha">
+            </div>
+            <div style="margin-top:var(--space-lg);display:flex;gap:var(--space-sm);justify-content:flex-end;">
+                <button onclick="document.getElementById('userEditModal').style.display='none'" style="padding:var(--space-sm) var(--space-lg);border:1px solid var(--outline-variant);border-radius:var(--radius-default);font-weight:600;">Cancelar</button>
+                <button id="saveUserEditBtn" class="btn-primary">Salvar Alterações</button>
+            </div>
+    <!-- Help Modal -->
+    <div id="viewHelpModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h3>Central de Ajuda</h3>
+                <button class="close-modal" onclick="document.getElementById('viewHelpModal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:var(--space-lg);">
+                <p style="margin-bottom:12px;">Bem-vindo ao <strong>TechSupport Pro</strong>!</p>
+                <ul style="list-style:disc; padding-left:20px; display:flex; flex-direction:column; gap:8px;">
+                    <li><strong>Painel:</strong> Visualize todos os chamados abertos no sistema.</li>
+                    <li><strong>Novo Chamado:</strong> Clique aqui para abrir uma nova solicitação.</li>
+                    <li><strong>Editar Chamado:</strong> Clique no ícone do "Olho" na tabela para alterar o status ou adicionar ações.</li>
+                    <li><strong>Configurações:</strong> Altere seu perfil, foto e preferências de aparência.</li>
+                </ul>
+                <div style="margin-top:20px; padding:12px; background:var(--surface-container); border-radius:8px; font-size:13px;">
+                    Dica: No modo Administrador, você pode gerenciar usuários e categorias.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="supabase.js?v=6"></script>
+    <script src="script.js?v=5"></script>
 </body>
 </html>
