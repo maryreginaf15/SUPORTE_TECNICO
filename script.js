@@ -136,80 +136,75 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } catch { }
             }
         }
-        // Chamados não serão mais gerados automaticamente
     }
 
     async function loadAllData() {
-        console.log('Carregando dados...');
-        const isDemo = currentUser?.id === 'demo-admin-id';
-
+        console.log('Carregando dados globais...');
+        const isMasterAdmin = currentUser?.email === 'masteradm@email.com';
+        
         try {
             profile = {
                 id: currentUser.id,
+                email: currentUser.email,
                 name: currentUser.name,
                 role: currentUser.role,
-                email: currentUser.email || '',
-                phone: currentUser.phone || '',
                 avatar: currentUser.avatar || ''
             };
 
             // Load users
-            if (!isDemo) {
-                try { users = await DB.loadUsers(); } catch (e) { console.warn('Erro ao carregar usuários:', e); }
-            }
+            try { 
+                const dbUsers = await DB.loadUsers(); 
+                if (dbUsers) users = dbUsers;
+            } catch (e) { console.warn('Erro ao carregar usuários:', e); }
 
             // Load categories
             try {
                 const dbCats = await DB.loadCategories();
-                if (dbCats.length > 0) categories = dbCats.map(c => ({ id: c.slug, name: c.name, _dbId: c.id }));
+                categories = (dbCats || []).map(c => ({ id: c.slug, name: c.name, _dbId: c.id }));
             } catch (e) { console.warn('Erro ao carregar categorias:', e); }
 
             // Load statuses
             try {
                 const dbStatuses = await DB.loadStatuses();
-                if (dbStatuses.length > 0) statuses = dbStatuses.map(s => ({ id: s.slug, name: s.name, _dbId: s.id }));
+                statuses = (dbStatuses || []).map(s => ({ id: s.slug, name: s.name, _dbId: s.id }));
             } catch (e) { console.warn('Erro ao carregar status:', e); }
 
             // Load tickets
             try {
                 const dbTickets = await DB.loadTickets();
-                if (dbTickets.length > 0) {
-                    tickets = dbTickets.map(t => ({
-                        id: t.ticket_id,
-                        subject: t.subject,
-                        category: t.category,
-                        priority: t.priority,
-                        status: t.status,
-                        description: t.description || '',
-                        actions_taken: t.actions_taken || '',
-                        created_at: t.created_at,
-                        closed_at: t.closed_at,
-                        created_by: t.created_by,
-                        assigned_to: t.assigned_to,
-                        _dbId: t.id
-                    }));
-                }
+                tickets = (dbTickets || []).map(t => ({
+                    id: t.ticket_id,
+                    subject: t.subject,
+                    category: t.category,
+                    priority: t.priority,
+                    status: t.status,
+                    description: t.description || '',
+                    actions_taken: t.actions_taken || '',
+                    created_at: t.created_at,
+                    closed_at: t.closed_at,
+                    created_by: t.created_by,
+                    assigned_to: t.assigned_to,
+                    _dbId: t.id
+                }));
             } catch (e) { console.warn('Erro ao carregar chamados:', e); }
 
             // Load prefs
-            if (!isDemo) {
-                try {
-                    const np = await DB.loadNotifPrefs(currentUser.id);
-                    if (np) Object.assign(notifPrefs, {
-                        notifNewTicket: np.notif_new_ticket ?? true,
-                        notifStatusChange: np.notif_status_change ?? true,
-                        notifSla: np.notif_sla ?? true,
-                        notifComments: np.notif_comments ?? true,
-                        notifReports: np.notif_reports ?? false
-                    });
-                    const ap = await DB.loadAppearancePrefs(currentUser.id);
-                    if (ap) Object.assign(appearancePrefs, {
-                        darkMode: ap.dark_mode ?? false,
-                        compactMode: ap.compact_mode ?? false,
-                        monoFont: ap.mono_font ?? true
-                    });
-                } catch (e) { console.warn('Erro ao carregar preferências:', e); }
-            }
+            try {
+                const np = await DB.loadNotifPrefs(currentUser.id);
+                if (np) Object.assign(notifPrefs, {
+                    notifNewTicket: np.notif_new_ticket ?? true,
+                    notifStatusChange: np.notif_status_change ?? true,
+                    notifSla: np.notif_sla ?? true,
+                    notifComments: np.notif_comments ?? true,
+                    notifReports: np.notif_reports ?? false
+                });
+                const ap = await DB.loadAppearancePrefs(currentUser.id);
+                if (ap) Object.assign(appearancePrefs, {
+                    darkMode: ap.dark_mode ?? false,
+                    compactMode: ap.compact_mode ?? false,
+                    monoFont: ap.mono_font ?? true
+                });
+            } catch (e) { console.warn('Erro ao carregar preferências:', e); }
 
             // Load system config
             try {
@@ -225,6 +220,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadProfileUI();
             loadNotifUI();
             updateCategoryFilter();
+            updateStatusFilters();
             updateFormCategories();
             renderTickets();
             updateNotifications();
@@ -244,35 +240,93 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderTickets() {
         const dashboardBody = document.getElementById('ticketsBody');
         const myTicketsBody = document.getElementById('myTicketsBody');
-        const isAdmin = currentUser?.role === 'admin';
+        const userId = currentUser?.id;
+        const role = currentUser?.role || 'client';
+        const isMasterAdmin = currentUser?.email === 'masteradm@email.com';
+        const isAdmin = role === 'admin' || isMasterAdmin;
+        const isTech = role === 'tech';
+
         if (dashboardBody) {
-            dashboardBody.innerHTML = tickets.map(t => generateRow(t, isAdmin)).join('');
+            // Dashboard Principal: Admin e Técnicos veem todos os chamados. Clientes veem apenas os seus.
+            const dashboardTkts = tickets.filter(t => {
+                if (isAdmin || isTech) return true;
+                return t.created_by === userId || t.assigned_to === userId;
+            });
+            dashboardBody.innerHTML = dashboardTkts.map(t => generateRow(t, isAdmin)).join('');
         }
         if (myTicketsBody) {
-            const myTkts = tickets.filter(t => t.created_by === currentUser?.id);
-            myTicketsBody.innerHTML = myTkts.map(t => generateRow(t, isAdmin)).join('');
+            // Meus Chamados: O usuário vê o que ele criou OU o que foi atribuído a ele
+            const myTkts = tickets.filter(t => {
+                const isCreator = t.created_by === userId;
+                const isAssigned = t.assigned_to === userId;
+                return isCreator || isAssigned;
+            });
+
+            console.log(`Renderizando ${myTkts.length} chamados para o usuário ${userId} (${role})`);
+            myTicketsBody.innerHTML = myTkts.length > 0 
+                ? myTkts.map(t => generateRow(t, isAdmin)).join('')
+                : '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--on-surface-variant);">Nenhum chamado encontrado para você.</td></tr>';
         }
 
         // Atualizar Dashboard Stats
         const statOpen = document.getElementById('statOpen');
         if (statOpen) {
-            statOpen.textContent = tickets.filter(t => t.status === 'open').length;
-            document.getElementById('statInProgress').textContent = tickets.filter(t => t.status === 'in-progress').length;
-            document.getElementById('statWaiting').textContent = tickets.filter(t => t.status === 'waiting').length;
-            document.getElementById('statResolved').textContent = tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
+            // Mapeamento de termos para contagem robusta com busca parcial
+            const sMatch = (s, terms) => terms.some(t => s?.toLowerCase().includes(t));
+            
+            const isOpen = s => sMatch(s, ['open', 'aberto', 'novo']);
+            const isInProgress = s => sMatch(s, ['in-progress', 'andamento', 'processing', 'processando', 'atendimento']);
+            const isWaiting = s => sMatch(s, ['waiting', 'aguarda', 'peca', 'peça']);
+            const isResolved = s => sMatch(s, ['resolved', 'closed', 'resolvido', 'fechado', 'finalizado', 'concluido', 'concluído']);
+
+            statOpen.textContent = tickets.filter(t => isOpen(t.status)).length;
+            document.getElementById('statInProgress').textContent = tickets.filter(t => isInProgress(t.status)).length;
+            document.getElementById('statWaiting').textContent = tickets.filter(t => isWaiting(t.status)).length;
+            document.getElementById('statResolved').textContent = tickets.filter(t => isResolved(t.status)).length;
         }
+    }
+
+    const priorityLabels = { critical: 'Crítica', high: 'Alta', medium: 'Média', low: 'Baixa' };
+    const statusLabels = { 
+        open: 'Chamado Aberto', 
+        'in-progress': 'Em Andamento', 
+        waiting: 'Aguardando', 
+        resolved: 'Finalizado', 
+        closed: 'Finalizado',
+        processing: 'Em Processamento'
+    };
+
+    function getStatusColorClass(name, slug) {
+        const n = name?.toLowerCase() || '';
+        const s = slug?.toLowerCase() || '';
+        
+        if (n.includes('aberto') || n.includes('novo') || s.includes('open') || s.includes('aberto')) return 'status-aberto';
+        if (n.includes('andamento') || n.includes('atendimento') || s.includes('progress')) return 'status-in-progress';
+        if (n.includes('aguarda') || n.includes('peca') || n.includes('peça') || s.includes('waiting')) return 'status-aguardando';
+        if (n.includes('finaliza') || n.includes('conclui') || n.includes('resolv') || n.includes('fecha') || s.includes('resolved') || s.includes('closed')) return 'status-resolved';
+        if (n.includes('processa') || s.includes('processing')) return 'status-processing';
+        
+        return `status-${s}`;
     }
 
     const generateRow = (t, isAdmin) => {
         const cat = categories.find(c => c.id === t.category);
         const st = statuses.find(s => s.id === t.status);
+        const statusName = st ? st.name : (statusLabels[t.status] || t.status || 'Aberto');
+        const statusClass = getStatusColorClass(statusName, t.status);
+        const pLabel = priorityLabels[t.priority] || 'Média';
+
         return `
         <tr data-category="${t.category}" data-status="${t.status}">
             <td class="ticket-id">${t.id}</td>
             <td class="ticket-subject">${t.subject}</td>
-            <td><span class="category-badge" style="background:var(--secondary-container);color:var(--on-secondary-container)">${cat ? cat.name : t.category.toUpperCase()}</span></td>
-            ${t.priority ? `<td><div class="priority-cell"><div class="priority-dot" style="background:var(--${t.priority === 'critical' ? 'error' : 'secondary'});"></div>${priorityMap[t.priority] || t.priority}</div></td>` : ''}
-            <td><span class="status-badge" style="${statusStyle[t.status] || ''}">${st ? st.name : t.status}</span></td>
+            <td><span class="category-badge">${cat ? cat.name : (t.category || 'Geral')}</span></td>
+            <td>
+                <div class="priority-cell">
+                    <span class="priority-badge priority-${t.priority || 'medium'}">${pLabel}</span>
+                </div>
+            </td>
+            <td><span class="status-badge ${statusClass}">${statusName}</span></td>
             <td class="actions-cell">
                 <button class="icon-btn view-ticket" data-id="${t.id}" title="Visualizar"><span class="material-symbols-outlined">visibility</span></button>
                 ${isAdmin ? `<button class="icon-btn delete-ticket" data-id="${t.id}" title="Excluir" style="color:var(--error)"><span class="material-symbols-outlined">delete</span></button>` : ''}
@@ -322,11 +376,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentModalTicket = ticket;
         document.getElementById('modalTicketId').textContent = ticket.id;
         document.getElementById('modalTicketSubject').textContent = ticket.subject;
+        
         const cat = categories.find(c => c.id === ticket.category);
-        document.getElementById('modalCat').textContent = cat ? cat.name : ticket.category.toUpperCase();
-        document.getElementById('modalPriority').textContent = priorityMap[ticket.priority] || ticket.priority;
+        const modalCat = document.getElementById('modalCat');
+        modalCat.textContent = cat ? cat.name : (ticket.category || 'Geral');
+        modalCat.className = 'category-badge';
+
+        const modalPriority = document.getElementById('modalPriority');
+        modalPriority.textContent = priorityLabels[ticket.priority] || 'Média';
+        modalPriority.className = `priority-badge priority-${ticket.priority || 'medium'}`;
+
         const st = statuses.find(s => s.id === ticket.status);
-        document.getElementById('modalStatus').textContent = st ? st.name : ticket.status;
+        const modalStatus = document.getElementById('modalStatus');
+        const statusName = st ? st.name : (statusLabels[ticket.status] || ticket.status || 'Aberto');
+        const statusClass = getStatusColorClass(statusName, ticket.status);
+        
+        modalStatus.textContent = statusName;
+        modalStatus.className = `status-badge ${statusClass}`;
+
         document.getElementById('modalDescription').textContent = ticket.description || 'Sem descrição detalhada.';
         document.getElementById('modalCreatedAt').textContent = formatDate(ticket.created_at);
         document.getElementById('modalClosedAt').textContent = formatDate(ticket.closed_at);
@@ -343,30 +410,79 @@ document.addEventListener('DOMContentLoaded', async () => {
             actionsContainer.style.display = 'none';
         }
 
-        const isAdmin = getCurrentUser()?.role === 'admin';
-        const isTech = getCurrentUser()?.role === 'tech';
+        const user = getCurrentUser();
+        const isMasterAdmin = user?.email === 'masteradm@email.com';
+        const isAdmin = user?.role === 'admin';
+        const isTech = user?.role === 'tech';
+        const isOwner = ticket.created_by === user?.id;
         
-        document.getElementById('modalDeleteBtn').style.display = isAdmin ? 'block' : 'none';
-        document.getElementById('modalAdminSection').style.display = (isAdmin || isTech) ? 'block' : 'none';
+        document.getElementById('modalDeleteBtn').style.display = (isMasterAdmin || isAdmin) ? 'block' : 'none';
+        
+        // Seção de edição visível para Admin, Master, Tech ou se for o Dono (para encerrar)
+        document.getElementById('modalAdminSection').style.display = (isMasterAdmin || isAdmin || isTech || isOwner) ? 'block' : 'none';
         document.getElementById('modalStatusFeedback').style.display = 'none';
 
-        if (isAdmin || isTech) {
-            const select = document.getElementById('modalStatusSelect');
-            select.innerHTML = statuses.map(s =>
+        const statusSelect = document.getElementById('modalStatusSelect');
+        const prioSelect = document.getElementById('modalPrioritySelect');
+        const catSelect = document.getElementById('modalCategorySelect');
+        const assignedSelect = document.getElementById('modalAssignedSelect');
+        const clientCloseBtn = document.getElementById('modalClientCloseBtn');
+        const saveBtn = document.getElementById('modalSaveStatusBtn');
+
+        if (isMasterAdmin || isAdmin || isTech || isOwner) {
+            // Status Select
+            statusSelect.innerHTML = statuses.map(s =>
                 `<option value="${s.id}" ${s.id === ticket.status ? 'selected' : ''}>${s.name}</option>`
             ).join('');
             
-            const prioSelect = document.getElementById('modalPrioritySelect');
+            // Priority Select
             if (prioSelect) prioSelect.value = ticket.priority || 'medium';
 
-            const assignedSelect = document.getElementById('modalAssignedSelect');
+            // Category Select
+            if (catSelect) {
+                catSelect.innerHTML = categories.map(c => 
+                    `<option value="${c.id}" ${c.id === ticket.category ? 'selected' : ''}>${c.name}</option>`
+                ).join('');
+            }
+
+            // Assigned Select
             if (assignedSelect) {
-                // Carregar técnicos assincronamente
-                DB.loadUsers().then(users => {
-                    const techs = users.filter(u => u.role === 'tech' || u.role === 'admin');
-                    assignedSelect.innerHTML = '<option value="">Não Atribuído</option>' + 
-                        techs.map(t => `<option value="${t.id}" ${t.id === ticket.assigned_to ? 'selected' : ''}>${t.name} (${t.role})</option>`).join('');
-                }).catch(e => console.warn('Erro ao carregar técnicos:', e));
+                if (isMasterAdmin || isAdmin || isTech) {
+                    assignedSelect.disabled = false;
+                    DB.loadUsers().then(users => {
+                        const techs = users.filter(u => u.role === 'tech' || u.role === 'admin');
+                        assignedSelect.innerHTML = '<option value="">Não Atribuído</option>' + 
+                            techs.map(t => `<option value="${t.id}" ${t.id === ticket.assigned_to ? 'selected' : ''}>${t.name} (${t.role})</option>`).join('');
+                    }).catch(e => console.warn('Erro ao carregar técnicos:', e));
+                } else {
+                    assignedSelect.disabled = true;
+                    assignedSelect.innerHTML = '<option value="">Apenas técnicos/admin</option>';
+                }
+            }
+
+            // Restrições para Clientes (não master/admin/tech)
+            if (isOwner && !isMasterAdmin && !isAdmin && !isTech) {
+                // Cliente só pode ver e talvez encerrar
+                statusSelect.disabled = true;
+                if (prioSelect) prioSelect.disabled = true;
+                if (catSelect) catSelect.disabled = true;
+                if (actionsInput) actionsInput.disabled = true;
+                saveBtn.style.display = 'none';
+                
+                // Mostrar botão de encerrar se não estiver resolvido/fechado
+                if (ticket.status !== 'resolved' && ticket.status !== 'closed') {
+                    clientCloseBtn.style.display = 'block';
+                } else {
+                    clientCloseBtn.style.display = 'none';
+                }
+            } else {
+                // Master, Admin ou Tech podem mudar tudo
+                statusSelect.disabled = false;
+                if (prioSelect) prioSelect.disabled = false;
+                if (catSelect) catSelect.disabled = false;
+                if (actionsInput) actionsInput.disabled = false;
+                saveBtn.style.display = 'block';
+                clientCloseBtn.style.display = 'none';
             }
         }
 
@@ -391,7 +507,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!currentModalTicket) return;
         const newStatus = document.getElementById('modalStatusSelect').value;
         const newPriority = document.getElementById('modalPrioritySelect')?.value;
+        const newCategory = document.getElementById('modalCategorySelect')?.value;
         const newAssigned = document.getElementById('modalAssignedSelect')?.value;
+        const newActions = document.getElementById('modalActionsInput').value;
         
         const fb = document.getElementById('modalStatusFeedback');
         fb.style.display = 'none';
@@ -400,8 +518,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const updates = { 
                 status: newStatus,
                 priority: newPriority || currentModalTicket.priority,
+                category: newCategory || currentModalTicket.category,
                 assigned_to: newAssigned || null,
-                actions_taken: document.getElementById('modalActionsInput').value
+                actions_taken: newActions
             };
             
             if (newStatus === 'closed' || newStatus === 'resolved') {
@@ -414,14 +533,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             await DB.updateTicket(currentModalTicket._dbId, updates);
 
-            currentModalTicket.status = newStatus;
-            currentModalTicket.priority = updates.priority;
-            currentModalTicket.assigned_to = updates.assigned_to;
-            currentModalTicket.actions_taken = updates.actions_taken;
-            currentModalTicket.closed_at = updates.closed_at || currentModalTicket.closed_at;
+            // Atualizar objeto local
+            Object.assign(currentModalTicket, updates);
 
+            // Atualizar UI do modal
             const st = statuses.find(s => s.id === newStatus);
-            document.getElementById('modalStatus').textContent = st ? st.name : newStatus;
+            const modalStatus = document.getElementById('modalStatus');
+            modalStatus.textContent = st ? st.name : (statusLabels[newStatus] || newStatus);
+            modalStatus.className = `status-badge status-${newStatus}`;
+            
+            const catObj = categories.find(c => c.id === currentModalTicket.category);
+            const modalCat = document.getElementById('modalCat');
+            modalCat.textContent = catObj ? catObj.name : (currentModalTicket.category || 'Geral');
+            modalCat.className = 'category-badge';
+            
+            const modalPriority = document.getElementById('modalPriority');
+            modalPriority.textContent = priorityLabels[currentModalTicket.priority] || 'Média';
+            modalPriority.className = `priority-badge priority-${currentModalTicket.priority || 'medium'}`;
             document.getElementById('modalClosedAt').textContent = formatDate(currentModalTicket.closed_at);
             
             const actionsDisplay = document.getElementById('modalActionsDisplay');
@@ -433,18 +561,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                 actionsContainer.style.display = 'none';
             }
 
-            document.getElementById('modalAdminSection').style.display = 'none';
-            renderTickets();
-            renderReports();
-
-            fb.textContent = 'Status atualizado com sucesso!';
+            fb.textContent = 'Chamado atualizado com sucesso!';
             fb.style.color = 'var(--success, #16a34a)';
             fb.style.display = 'block';
-            setTimeout(() => { fb.style.display = 'none'; }, 3000);
+            
+            renderTickets();
+            renderReports();
+            
+            setTimeout(() => { 
+                fb.style.display = 'none';
+                modal.style.display = 'none';
+            }, 1500);
         } catch (err) {
             fb.textContent = 'Erro: ' + err.message;
             fb.style.color = 'var(--error)';
             fb.style.display = 'block';
+        }
+    });
+
+    document.getElementById('modalClientCloseBtn')?.addEventListener('click', async () => {
+        if (!currentModalTicket) return;
+        if (!confirm('Deseja realmente encerrar este chamado?')) return;
+        
+        try {
+            const updates = { 
+                status: 'closed',
+                closed_at: new Date().toISOString()
+            };
+            await DB.updateTicket(currentModalTicket._dbId, updates);
+            Object.assign(currentModalTicket, updates);
+            
+            renderTickets();
+            renderReports();
+            modal.style.display = 'none';
+            alert('Chamado encerrado com sucesso!');
+        } catch (err) {
+            alert('Erro ao encerrar: ' + err.message);
         }
     });
 
@@ -544,19 +696,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('saveProfileBtn')?.addEventListener('click', async () => {
+        const rawRole = document.getElementById('profileRole').value.toLowerCase();
+        let finalRole = 'client';
+        if (rawRole.includes('admin')) finalRole = 'admin';
+        else if (rawRole.includes('tec')) finalRole = 'tech';
+        else finalRole = 'client';
+
         profile.name = document.getElementById('profileName').value;
-        profile.role = document.getElementById('profileRole').value;
+        profile.role = finalRole;
         profile.email = document.getElementById('profileEmail').value;
         profile.phone = document.getElementById('profilePhone').value;
+
         try {
             await DB.updateUser(currentUser?.id, {
                 name: profile.name,
-                role: profile.role,
+                role: finalRole,
                 email: profile.email,
-                phone: profile.phone,
-                avatar: profile.avatar || ''
+                phone: profile.phone
             });
             currentUser = DB.getCurrentUser();
+            applyPermissions(); // Atualiza UI imediatamente
             const fb = document.getElementById('profileSaveFeedback');
             fb.textContent = 'Perfil salvo com sucesso!';
             fb.className = 'save-feedback success';
@@ -641,14 +800,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Settings tabs visibility
         const settingsTabs = document.querySelectorAll('.settings-sidebar .nav-link');
+        const isMasterAdmin = currentUser?.email === 'masteradm@email.com';
+
         settingsTabs.forEach(tab => {
             const tabName = tab.dataset.settingsTab;
-            if (isClient) {
-                tab.style.display = (tabName === 'profile') ? 'block' : 'none';
-            } else if (isTech) {
-                tab.style.display = (tabName === 'management' || tabName === 'notifications') ? 'none' : 'block';
-            } else if (isAdmin) {
-                tab.style.display = 'block';
+            if (isMasterAdmin) {
+                tab.style.display = 'block'; // Master Admin vê tudo
+            } else if (isAdmin || isTech) {
+                // Outros admins ou técnicos NÃO veem Gerenciamento, apenas Notificações, Perfil e Aparência
+                tab.style.display = (tabName === 'management') ? 'none' : 'block';
+            } else if (isClient) {
+                // Cliente vê apenas Perfil e Aparência
+                tab.style.display = (tabName === 'profile' || tabName === 'appearance') ? 'block' : 'none';
             }
         });
 
@@ -657,28 +820,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         navLinks.forEach(link => {
             const view = link.dataset.view;
             if (isClient) {
-                link.style.display = (view === 'my-tickets' || view === 'new-ticket') ? 'flex' : 'none';
+                // Cliente vê Dashboard, Meus Chamados, Novo Chamado, Relatórios e Configurações
+                link.style.display = (['dashboard', 'my-tickets', 'new-ticket', 'reports', 'settings'].includes(view)) ? 'flex' : 'none';
             } else {
                 link.style.display = 'flex';
             }
         });
 
         // Technical restrictions
+        // Management tab restrictions for Technical staff
         if (isTech) {
+            // Se o técnico de alguma forma acessar a aba de gerenciamento, restringimos os painéis
             const mgmtTabs = document.querySelectorAll('.admin-tab');
             mgmtTabs.forEach(tab => {
                 const t = tab.dataset.adminTab;
+                // Técnico só pode ver usuários (para consulta) e chamados-admin, mas não configurações de sistema
                 if (['system', 'categories', 'statuses'].includes(t)) {
                     tab.style.display = 'none';
                 } else {
                     tab.style.display = 'block';
                 }
             });
-            // If on a hidden tab, switch to users
-            const activeTab = document.querySelector('.admin-tab.active');
-            if (activeTab && activeTab.style.display === 'none') {
-                document.querySelector('.admin-tab[data-admin-tab="users"]')?.click();
-            }
+        }
+        
+        // Se for admin ou master, garante que os painéis de gerenciamento apropriados estejam visíveis
+        if (isAdmin || isMasterAdmin) {
+            document.querySelectorAll('.admin-tab').forEach(tab => {
+                const t = tab.dataset.adminTab;
+                if (isMasterAdmin) {
+                    tab.style.display = 'block'; // Master vê tudo no gerenciamento
+                } else {
+                    // Outros admins veem apenas Usuários e Chamados, não sistema/categorias/status
+                    tab.style.display = (['users', 'tickets-admin'].includes(t)) ? 'block' : 'none';
+                }
+            });
         }
 
         // User profile visibility
@@ -726,7 +901,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (sbAvatar) sbAvatar.src = currentUser?.avatar || 'https://ui-avatars.com/api/?name=' + (currentUser?.name || 'User') + '&background=random';
         if (sbName) sbName.textContent = currentUser?.name || 'Usuário';
-        if (sbRole) sbRole.textContent = currentUser?.role === 'admin' ? 'Administrador' : currentUser?.role === 'tech' ? 'Técnico' : 'Cliente';
+        if (sbRole) {
+            const isMasterAdmin = currentUser?.email === 'masteradm@email.com';
+            if (isMasterAdmin) {
+                sbRole.textContent = 'ADMIN MASTER';
+                sbRole.style.color = '#3b82f6'; // Azul destaque
+                sbRole.style.fontWeight = '800';
+            } else {
+                const roleLabel = currentUser?.role === 'admin' ? 'ADMINISTRADOR' : currentUser?.role === 'tech' ? 'TÉCNICO' : 'CLIENTE';
+                sbRole.textContent = roleLabel;
+                sbRole.style.color = '';
+                sbRole.style.fontWeight = '';
+            }
+        }
 
         const myTicketsTitle = document.getElementById('myTicketsTitle');
         if (myTicketsTitle) myTicketsTitle.textContent = `Meus Chamados - ${currentUser?.name || 'Usuário'}`;
@@ -919,10 +1106,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
         tbody.innerHTML = users.map((u, i) => {
             const isCurrent = u.id === currentUser?.id;
+            const roleLabel = u.role === 'admin' ? 'Administrador' : u.role === 'tech' ? 'Técnico' : 'Cliente';
             return `<tr>
                 <td><strong>${u.name}</strong> ${isCurrent ? '<span style="font-size:10px;color:var(--primary);font-weight:600;">(ativo)</span>' : ''}</td>
                 <td>${u.email}</td>
-                <td><span class="user-role-badge ${u.role}">${u.role === 'admin' ? 'Administrador' : u.role === 'tech' ? 'Técnico' : 'Cliente'}</span></td>
+                <td><span class="role-badge role-${u.role}">${roleLabel}</span></td>
                 <td style="text-align:right;white-space:nowrap;">
                     <button class="user-edit-btn" data-index="${i}" style="color:var(--primary);font-weight:600;font-size:12px;padding:4px 8px;border-radius:4px;">Editar</button>
                     <button class="user-config-btn" data-index="${i}" style="color:var(--secondary);font-weight:600;font-size:12px;padding:4px 8px;border-radius:4px;">Permissões</button>
@@ -1064,21 +1252,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         const name = document.getElementById('newUserName').value.trim();
         const email = document.getElementById('newUserEmail').value.trim();
         const role = document.getElementById('newUserRole').value;
-        if (!username || !name) { alert('Preencha usuário e nome.'); return; }
-        if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-            alert('Já existe um usuário com este nome de usuário.'); return;
-        }
         const defaultPassword = '123456';
+        
+        if (!name || !email) { alert('Preencha pelo menos Nome e E-mail.'); return; }
+        
+        if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+            alert('Este e-mail já está em uso por outro usuário!');
+            return;
+        }
+
+        document.getElementById('addUserBtn').disabled = true;
+        document.getElementById('addUserBtn').textContent = 'Criando...';
+
         try {
             await DB.addUser({ username, name, email, role, password: defaultPassword });
-            users = await DB.loadUsers();
-            document.getElementById('newUserUsername').value = '';
+            alert('Usuário criado com sucesso! Ele poderá entrar com a senha padrão: ' + defaultPassword);
+            
+            // Recarregar usuários do banco para garantir sincronia
+            const dbUsers = await DB.loadUsers();
+            if (dbUsers) users = dbUsers;
+            
+            renderUsers();
             document.getElementById('newUserName').value = '';
             document.getElementById('newUserEmail').value = '';
-            renderUsers();
-            alert(`Usuário ${name} criado! Usuário: ${username}, Senha: ${defaultPassword}`);
+            document.getElementById('newUserUsername').value = '';
         } catch (err) {
-            alert('Erro ao criar usuário: ' + err.message);
+            alert('Erro ao criar usuário: ' + (err.message || 'Verifique se o e-mail é válido e não está em uso.'));
+        } finally {
+            document.getElementById('addUserBtn').disabled = false;
+            document.getElementById('addUserBtn').textContent = 'Adicionar Usuário';
         }
     });
 
@@ -1097,10 +1299,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const list = document.getElementById('categoryList');
         const count = document.getElementById('categoryCount');
         if (!list) return;
+        const isAdmin = currentUser?.role === 'admin' || currentUser?.email === 'masteradm@email.com';
+
         list.innerHTML = categories.map((c, i) =>
-            `<li>${c.name} <button class="item-delete" data-index="${i}"><span class="material-symbols-outlined">delete</span></button></li>`
+            `<li>
+                ${c.name} 
+                <div style="display:flex;gap:4px;">
+                    ${isAdmin ? `<button class="item-edit item-edit-category" data-index="${i}"><span class="material-symbols-outlined">edit</span></button>` : ''}
+                    <button class="item-delete" data-index="${i}"><span class="material-symbols-outlined">delete</span></button>
+                </div>
+            </li>`
         ).join('');
         count.textContent = categories.length;
+        
         list.querySelectorAll('.item-delete').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const idx = parseInt(btn.dataset.index);
@@ -1116,14 +1327,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         });
+
+        list.querySelectorAll('.item-edit-category').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const idx = parseInt(btn.dataset.index);
+                const cat = categories[idx];
+                const newName = prompt('Editar nome da categoria:', cat.name);
+                if (newName && newName.trim() !== '' && newName !== cat.name) {
+                    try {
+                        const result = await DB.updateCategory(cat._dbId, newName.trim());
+                        categories[idx].name = result.name;
+                        categories[idx].id = result.slug;
+                        renderCategories();
+                        updateCategoryFilter();
+                        updateFormCategories();
+                    } catch (err) {
+                        alert('Erro ao editar: ' + err.message);
+                    }
+                }
+            });
+        });
     }
 
     document.getElementById('addCategoryBtn')?.addEventListener('click', async () => {
         const input = document.getElementById('newCategoryInput');
         const name = input.value.trim();
         if (!name) return;
-        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        if (categories.find(c => c.id === slug)) { alert('Categoria já existe!'); return; }
+        
+        // Slug generation matching supabase.js
+        const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim();
+        
+        if (categories.find(c => c.id === slug || c.name.toLowerCase() === name.toLowerCase())) { 
+            alert('Esta categoria já existe!'); 
+            return; 
+        }
+
         try {
             const result = await DB.insertCategory(name);
             categories.push({ id: result.slug, name: result.name, _dbId: result.id });
@@ -1132,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateFormCategories();
             renderCategories();
         } catch (err) {
-            alert('Erro ao adicionar categoria: ' + err.message);
+            alert(err.message);
         }
     });
 
@@ -1145,10 +1383,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const list = document.getElementById('statusList');
         const count = document.getElementById('statusCount');
         if (!list) return;
+        const isAdmin = currentUser?.role === 'admin' || currentUser?.email === 'masteradm@email.com';
+
         list.innerHTML = statuses.map((s, i) =>
-            `<li>${s.name} <button class="item-delete" data-index="${i}"><span class="material-symbols-outlined">delete</span></button></li>`
+            `<li>
+                ${s.name} 
+                <div style="display:flex;gap:4px;">
+                    ${isAdmin ? `<button class="item-edit item-edit-status" data-index="${i}"><span class="material-symbols-outlined">edit</span></button>` : ''}
+                    <button class="item-delete" data-index="${i}"><span class="material-symbols-outlined">delete</span></button>
+                </div>
+            </li>`
         ).join('');
         count.textContent = statuses.length;
+
         list.querySelectorAll('.item-delete').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const idx = parseInt(btn.dataset.index);
@@ -1162,21 +1409,47 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         });
+
+        list.querySelectorAll('.item-edit-status').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const idx = parseInt(btn.dataset.index);
+                const st = statuses[idx];
+                const newName = prompt('Editar nome do status:', st.name);
+                if (newName && newName.trim() !== '' && newName !== st.name) {
+                    try {
+                        const result = await DB.updateStatus(st._dbId, newName.trim());
+                        statuses[idx].name = result.name;
+                        statuses[idx].id = result.slug;
+                        renderStatuses();
+                    } catch (err) {
+                        alert('Erro ao editar: ' + err.message);
+                    }
+                }
+            });
+        });
     }
 
     document.getElementById('addStatusBtn')?.addEventListener('click', async () => {
         const input = document.getElementById('newStatusInput');
         const name = input.value.trim();
         if (!name) return;
-        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        if (statuses.find(s => s.id === slug)) { alert('Status já existe!'); return; }
+        
+        // Slug generation matching supabase.js
+        const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-').trim();
+
+        if (statuses.find(s => s.id === slug || s.name.toLowerCase() === name.toLowerCase())) { 
+            alert('Este status já existe!'); 
+            return; 
+        }
+
         try {
             const result = await DB.insertStatus(name);
             statuses.push({ id: result.slug, name: result.name, _dbId: result.id });
             input.value = '';
             renderStatuses();
+            updateStatusFilters(); // Reflete em Meus Chamados e labels
         } catch (err) {
-            alert('Erro ao adicionar status: ' + err.message);
+            alert(err.message);
         }
     });
 
@@ -1226,6 +1499,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    function updateStatusFilters() {
+        const bar = document.getElementById('myTicketsFilters');
+        if (!bar) return;
+
+        // Atualizar statusLabels global para garantir consistência
+        statuses.forEach(s => { statusLabels[s.id] = s.name; });
+
+        // Remover chips antigos (exceto o 'Todos')
+        bar.querySelectorAll('.my-tickets-filter').forEach(chip => {
+            if (chip.dataset.myfilter !== 'all') chip.remove();
+        });
+
+        // Adicionar novos chips baseados no array statuses
+        statuses.forEach(s => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-chip my-tickets-filter';
+            btn.dataset.myfilter = s.id;
+            btn.textContent = s.name;
+            bar.appendChild(btn);
+
+            btn.addEventListener('click', () => {
+                bar.querySelectorAll('.my-tickets-filter').forEach(ch => ch.classList.remove('active'));
+                btn.classList.add('active');
+                filterMyTickets(s.id);
+            });
+        });
+    }
+
     function filterMyTickets(status) {
         document.querySelectorAll('#myTicketsBody tr').forEach(row => {
             const show = status === 'all' || row.dataset.status === status;
@@ -1248,21 +1549,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         try {
             const result = await DB.insertTicket(ticketData);
-            tickets.unshift({
-                id: result.ticket_id,
-                subject: result.subject,
-                category: result.category,
-                priority: result.priority,
-                status: result.status,
-                description: result.description || '',
-                created_at: result.created_at,
-                closed_at: result.closed_at,
-                created_by: result.created_by,
-                assigned_to: result.assigned_to,
-                _dbId: result.id
-            });
-            renderTickets();
-            renderReports();
+            
+            // Recarregar todos os dados do banco para garantir sincronia total
+            await loadAllData();
+            
             alert('Chamado aberto com sucesso!');
             e.target.reset();
             switchView('my-tickets');
@@ -1333,6 +1623,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('btnExportPDF')?.addEventListener('click', () => window.print());
+    
+    // ============= GLOBAL SEARCH =============
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const currentView = document.querySelector('.view-section:not([style*="display: none"])')?.id;
+            
+            let targetBodyId = '';
+            if (currentView === 'view-dashboard') targetBodyId = 'ticketsBody';
+            else if (currentView === 'view-my-tickets') targetBodyId = 'myTicketsBody';
+            
+            if (targetBodyId) {
+                const rows = document.querySelectorAll(`#${targetBodyId} tr`);
+                rows.forEach(row => {
+                    const text = row.innerText.toLowerCase();
+                    row.style.display = text.includes(term) ? '' : 'none';
+                });
+            }
+        });
+    }
 
     // ============= MOBILE MENU =============
     const sidebar = document.getElementById('sidebar');
@@ -1421,9 +1732,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!chartContainer) return;
 
+        const userId = currentUser?.id;
+        const role = currentUser?.role || 'client';
+        const isMasterAdmin = currentUser?.email === 'masteradm@email.com';
+        const isAdminOrTech = role === 'admin' || role === 'tech' || isMasterAdmin;
+
+        // Filtrar chamados para o relatório: Admin/Tech veem tudo, Cliente vê apenas os seus
+        const reportTkts = tickets.filter(t => {
+            if (isAdminOrTech) return true;
+            return t.created_by === userId || t.assigned_to === userId;
+        });
+
         const catCounts = {};
         categories.forEach(c => { catCounts[c.id] = 0; });
-        tickets.forEach(t => {
+        reportTkts.forEach(t => {
             if (catCounts[t.category] !== undefined) catCounts[t.category]++;
         });
         const maxCount = Math.max(1, ...Object.values(catCounts));
@@ -1452,7 +1774,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         statusContainer.innerHTML = statuses.map(s => {
             const count = statusCounts[s.id] || 0;
-            const pct = totalTickets > 0 ? Math.round((count / totalTickets) * 100) : 0;
+            const totalForReport = reportTkts.length;
+            const pct = totalForReport > 0 ? Math.round((count / totalForReport) * 100) : 0;
             return `
                 <div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;">
@@ -1464,6 +1787,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>`;
         }).join('');
+    }
+
+    async function init() {
+        console.log('Inicializando componentes...');
+        await restoreSession();
+        if (currentUser) {
+            console.log('Sessão restaurada para:', currentUser.name);
+            await loadAllData();
+        } else {
+            console.log('Nenhuma sessão encontrada, mostrando tela de login.');
+            showAuth();
+        }
     }
 
     init();

@@ -580,11 +580,9 @@
             <div class="view-section" id="view-my-tickets" style="display: none; padding: var(--space-lg);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg);">
                     <h2 style="font-size: 24px;" id="myTicketsTitle">Meus Chamados</h2>
-                    <div style="display: flex; gap: var(--space-sm);">
+                    <div style="display: flex; gap: var(--space-sm);" id="myTicketsFilters">
                         <button class="filter-chip my-tickets-filter active" data-myfilter="all">Todos</button>
-                        <button class="filter-chip my-tickets-filter" data-myfilter="open">Abertos</button>
-                        <button class="filter-chip my-tickets-filter" data-myfilter="in-progress">Em Atendimento</button>
-                        <button class="filter-chip my-tickets-filter" data-myfilter="resolved">Resolvidos</button>
+                        <!-- Filtros dinâmicos serão inseridos aqui -->
                     </div>
                 </div>
                 
@@ -644,7 +642,7 @@
             </div>
             <div style="margin-top: 16px; font-size: 14px; display: none;" id="modalActionsContainer">
                 <strong>Ações Tomadas:</strong>
-                <p id="modalActionsDisplay" style="margin-top: 4px; padding: 8px; background: var(--surface-container); border-radius: 4px; font-style: italic;"></p>
+                <p id="modalActionsDisplay" style="margin-top: 4px; padding: 12px; background: #ffffff; color: #000000; border: 1px solid var(--outline-variant); border-radius: 4px; font-style: italic; box-shadow: var(--shadow-sm);"></p>
             </div>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--outline-variant);">
             <p id="modalDescription" style="font-size: 14px; line-height: 1.6;">Descrição detalhada aqui...</p>
@@ -665,7 +663,11 @@
                             <option value="critical">Crítica</option>
                         </select>
                     </div>
-                    <div style="grid-column: span 2;">
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--on-surface-variant);">Departamento/Categoria:</label>
+                        <select id="modalCategorySelect" style="width:100%;padding:var(--space-sm);border:1px solid var(--outline-variant);border-radius:var(--radius-default);background:white;"></select>
+                    </div>
+                    <div>
                         <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--on-surface-variant);">Atribuído para:</label>
                         <select id="modalAssignedSelect" style="width:100%;padding:var(--space-sm);border:1px solid var(--outline-variant);border-radius:var(--radius-default);background:white;">
                             <option value="">Não Atribuído</option>
@@ -679,7 +681,8 @@
                     <textarea id="modalActionsInput" rows="3" placeholder="Descreva as ações tomadas para resolver este chamado..." style="width: 100%; padding: var(--space-sm); border: 1px solid var(--outline-variant); border-radius: var(--radius-default); outline: none; font-family: inherit; font-size: 13px; resize: vertical;"></textarea>
                 </div>
                 
-                <div style="display:flex; justify-content: flex-end;">
+                <div style="display:flex; justify-content: flex-end; gap: 8px;">
+                    <button id="modalClientCloseBtn" style="display:none; padding:var(--space-sm) var(--space-lg);border:1px solid var(--error);color:var(--error);border-radius:var(--radius-default);font-weight:600;background:none;">Encerrar Chamado</button>
                     <button id="modalSaveStatusBtn" style="padding:var(--space-sm) var(--space-lg);background:var(--primary);color:white;border-radius:var(--radius-default);font-weight:600;">Salvar Alterações</button>
                 </div>
 
